@@ -1,0 +1,357 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# engr - Claude Code wrapper with provider switching
+# Usage:
+#   engr                     # Anthropic (default)
+#   engr --minimax           # MiniMax provider
+#   engr --ollama            # Ollama provider
+#   engr --ollama -m glm-5:cloud  # Ollama with model override
+#   engr --glm                # GLM coding plan (z.ai)
+#   engr --kimi               # Kimi provider
+#   engr --openrouter         # OpenRouter provider
+#   engr --openai              # OpenAI provider
+#   engr --litellm             # LiteLLM proxy
+#   engr --bifrost             # MaximHQ Bifrost gateway
+#   engr --opencode            # OpenCode (MiniMax via OpenCode Zen)
+#   engr -y                    # Skip permission prompts (yolo mode)
+#   engr [any other claude args]   # Pass-through to claude
+#   engr --install           # Install to ~/.local/bin
+#   engr --install /usr/local/bin  # Install to custom location
+#   engr claude update       # Run 'claude update' to update Claude Code
+#   engr --help              # Show help message
+
+PROVIDER="anthropic"
+MODEL=""
+SKIP_PERMISSIONS=false
+THINKING_DISPLAY=false
+EXTRA_ARGS=()
+
+# Installation function
+do_install() {
+  local install_dir="$1"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  echo "Installing engr to $install_dir..."
+
+  mkdir -p "$install_dir"
+  chmod +x "$script_dir/engr"
+  cp "$script_dir/engr" "$install_dir/engr"
+
+  # Create 'ccx' alias symlink
+  ln -sf "$install_dir/engr" "$install_dir/ccx"
+
+  if [[ ":$PATH:" != *":$install_dir:"* ]]; then
+    echo ""
+    echo "Warning: $install_dir is not in your PATH."
+    echo ""
+    echo "Add this to your shell config (.bashrc, .zshrc, etc):"
+    echo ""
+    echo "    export PATH=\"$install_dir:\$PATH\""
+    echo ""
+  else
+    echo "Done! Run 'engr --help' or 'ccx --help' to get started."
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install)
+      INSTALL_DIR="${2:-}"
+      if [[ -n "$INSTALL_DIR" && "$INSTALL_DIR" != "--"* ]]; then
+        shift
+      else
+        INSTALL_DIR="$HOME/.local/bin"
+      fi
+      do_install "$INSTALL_DIR"
+      exit 0
+      ;;
+    --minimax)
+      PROVIDER="minimax"
+      shift
+      ;;
+    --ollama)
+      PROVIDER="ollama"
+      shift
+      ;;
+    --glm)
+      PROVIDER="glm"
+      shift
+      ;;
+    --kimi)
+      PROVIDER="kimi"
+      shift
+      ;;
+    --openrouter)
+      PROVIDER="openrouter"
+      shift
+      ;;
+    --openai)
+      PROVIDER="openai"
+      shift
+      ;;
+    --litellm)
+      PROVIDER="litellm"
+      shift
+      ;;
+    --bifrost)
+      PROVIDER="bifrost"
+      shift
+      ;;
+    --opencode)
+      PROVIDER="opencode"
+      shift
+      ;;
+    -y|--yolo)
+      SKIP_PERMISSIONS=true
+      shift
+      ;;
+    -t|--thinking)
+      THINKING_DISPLAY=true
+      shift
+      ;;
+    -[yt]*)
+      # Handle combined short flags like -yt or -ty
+      for (( i=1; i<${#1}; i++ )); do
+        case "${1:$i:1}" in
+          y) SKIP_PERMISSIONS=true ;;
+          t) THINKING_DISPLAY=true ;;
+          *)
+            echo "Unknown flag: -${1:$i:1}" >&2
+            exit 1
+            ;;
+        esac
+      done
+      shift
+      ;;
+    -m|--model)
+      MODEL="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: engr [provider] [options] [claude args]"
+      echo ""
+      echo "Providers:"
+      echo "  --minimax     Use MiniMax provider (requires ENGR_MINIMAX_API_KEY)"
+      echo "  --ollama      Use Ollama provider (requires Ollama running on localhost:11434)"
+      echo "  --glm         Use GLM coding plan (z.ai, requires ENGR_ZAI_API_KEY)"
+      echo "  --kimi        Use Kimi provider (requires ENGR_KIMI_API_KEY)"
+      echo "  --openrouter  Use OpenRouter provider (requires ENGR_OPENROUTER_API_KEY)"
+      echo "  --openai      Use OpenAI provider (requires ENGR_OPENAI_API_KEY)"
+      echo "  --litellm     Use LiteLLM proxy (requires ENGR_LITELLM_API_KEY)"
+      echo "  --bifrost     Use MaximHQ Bifrost gateway (requires ENGR_BIFROST_API_KEY, ENGR_BIFROST_BASE_URL)"
+      echo "  --opencode    Use OpenCode (MiniMax via OpenCode Zen, requires ENGR_OPENCODE_API_KEY)"
+      echo ""
+      echo "Commands:"
+      echo "  --install [PATH]    Install engr to PATH (default: ~/.local/bin)"
+      echo "  claude update       Update Claude Code to the latest version"
+      echo ""
+      echo "Options:"
+      echo "  -m, --model MODEL   Specify model to use"
+      echo "  -y, --yolo          Skip all permission prompts (--dangerously-skip-permissions)"
+      echo "  -t, --thinking      Enable summarized thinking display (--thinking-display summarized)"
+      echo "  -h, --help          Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  engr                          # Anthropic (default)"
+      echo "  engr --minimax                # MiniMax provider"
+      echo "  engr --ollama                 # Ollama provider"
+      echo "  engr --ollama -m glm-5:cloud  # Ollama with model override"
+      echo "  engr --glm                    # GLM coding plan"
+      echo "  engr --kimi                   # Kimi provider"
+      echo "  engr --openrouter             # OpenRouter provider"
+      echo "  engr --openai                # OpenAI provider"
+      echo "  engr --litellm               # LiteLLM proxy"
+      echo "  engr --bifrost               # MaximHQ Bifrost gateway"
+      echo "  engr --opencode              # OpenCode (MiniMax via OpenCode Zen)"
+      echo "  engr -y                      # Skip permission prompts (yolo mode)"
+      echo "  engr -t                      # Enable thinking display"
+      echo "  engr -yt                     # Combined: yolo + thinking display"
+      echo "  engr --yolo --openrouter     # OpenRouter + skip permissions"
+      echo "  engr claude update           # Update Claude Code"
+      echo "  engr [any other claude args]  # Pass-through to claude"
+      exit 0
+      ;;
+    claude)
+      if [[ "${2:-}" == "update" ]]; then
+        exec claude update
+      fi
+      EXTRA_ARGS+=("$1")
+      shift
+      ;;
+    *)
+      EXTRA_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Build the claude command
+CMD=(claude)
+
+if [[ "$SKIP_PERMISSIONS" == "true" ]]; then
+  CMD+=(--dangerously-skip-permissions)
+fi
+
+if [[ "$THINKING_DISPLAY" == "true" ]]; then
+  CMD+=(--thinking-display summarized)
+fi
+
+if [[ -n "$MODEL" ]]; then
+  CMD+=(--model "$MODEL")
+fi
+
+CMD+=("${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}")
+
+# Set provider-specific environment and execute
+case "$PROVIDER" in
+  minimax)
+    if [[ -z "${ENGR_MINIMAX_API_KEY:-}" ]]; then
+      echo "Error: ENGR_MINIMAX_API_KEY is not set" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_MINIMAX_API_KEY"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-3000000}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    export ANTHROPIC_MODEL="MiniMax-M2.7"
+    export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.7"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="MiniMax-M2.7"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="MiniMax-M2.7"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="MiniMax-M2.7"
+    ;;
+  ollama)
+    # Start Ollama if not already running (check endpoint, pgrep -x is unreliable on macOS)
+    if ! curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+      echo "Starting Ollama server..."
+      nohup ollama serve >/dev/null 2>&1 &
+      # Wait for Ollama to be ready
+      for _ in $(seq 1 30); do
+        if curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+          echo "Ollama is ready."
+          break
+        fi
+        sleep 1
+      done
+      if ! curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+        echo "Error: Ollama failed to start" >&2
+        exit 1
+      fi
+    fi
+
+    # Auto-pull model if not available locally
+    if [[ -n "$MODEL" ]]; then
+      if ! ollama list 2>/dev/null | grep -q "$MODEL"; then
+        echo "Model '$MODEL' not found locally. Pulling..."
+        ollama pull "$MODEL"
+      fi
+    fi
+
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_AUTH_TOKEN="${ENGR_OLLAMA_CLOUD_API_KEY:-ollama}"
+    export ANTHROPIC_BASE_URL="http://localhost:11434"
+    ;;
+  glm)
+    if [[ -z "${ENGR_ZAI_API_KEY:-}" ]]; then
+      echo "Error: ENGR_ZAI_API_KEY is not set" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_ZAI_API_KEY"
+    export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-3000000}"
+    ;;
+  kimi)
+    if [[ -z "${ENGR_KIMI_API_KEY:-}" ]]; then
+      echo "Error: ENGR_KIMI_API_KEY is not set" >&2
+      exit 1
+    fi
+    KIMI_MODEL="${ENGR_KIMI_MODEL:-kimi-k2.6}"
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_KIMI_API_KEY"
+    export ANTHROPIC_BASE_URL="${ENGR_KIMI_BASE_URL:-https://api.kimi.com/coding/}"
+    export ANTHROPIC_MODEL="$KIMI_MODEL"
+    export ANTHROPIC_SMALL_FAST_MODEL="$KIMI_MODEL"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="$KIMI_MODEL"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="$KIMI_MODEL"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="$KIMI_MODEL"
+    export CLAUDE_CODE_SUBAGENT_MODEL="$KIMI_MODEL"
+    export ENABLE_TOOL_SEARCH=false
+    ;;
+  openrouter)
+    if [[ -z "${ENGR_OPENROUTER_API_KEY:-}" ]]; then
+      echo "Error: ENGR_OPENROUTER_API_KEY is not set" >&2
+      exit 1
+    fi
+    export ANTHROPIC_API_KEY=""
+    export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_OPENROUTER_API_KEY"
+    export CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK=1
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="anthropic/claude-opus-4-5"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="anthropic/claude-sonnet-4-5"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="anthropic/claude-haiku-4-5"
+    export CLAUDE_CODE_SUBAGENT_MODEL="anthropic/claude-sonnet-4-5"
+    ;;
+  openai)
+    if [[ -z "${ENGR_OPENAI_API_KEY:-}" ]]; then
+      echo "Error: ENGR_OPENAI_API_KEY is not set" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="https://api.anthropic.com/v1/"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_OPENAI_API_KEY"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-300000}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    ;;
+  litellm)
+    BASE_URL="${ENGR_LITELLM_BASE_URL:-http://localhost:4000}"
+    if [[ -z "${ENGR_LITELLM_API_KEY:-}" ]]; then
+      echo "Error: ENGR_LITELLM_API_KEY is not set" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="$BASE_URL"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_LITELLM_API_KEY"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-300000}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    ;;
+  bifrost)
+    if [[ -z "${ENGR_BIFROST_API_KEY:-}" ]]; then
+      echo "Error: ENGR_BIFROST_API_KEY is not set" >&2
+      exit 1
+    fi
+    if [[ -z "${ENGR_BIFROST_BASE_URL:-}" ]]; then
+      echo "Error: ENGR_BIFROST_BASE_URL is not set (check your Maxim dashboard)" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="$ENGR_BIFROST_BASE_URL"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_BIFROST_API_KEY"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-300000}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    ;;
+  opencode)
+    if [[ -z "${ENGR_OPENCODE_API_KEY:-}" ]]; then
+      echo "Error: ENGR_OPENCODE_API_KEY is not set" >&2
+      exit 1
+    fi
+    unset ANTHROPIC_API_KEY
+    export ANTHROPIC_BASE_URL="https://opencode.ai/zen/go"
+    export ANTHROPIC_AUTH_TOKEN="$ENGR_OPENCODE_API_KEY"
+    export API_TIMEOUT_MS="${API_TIMEOUT_MS:-3000000}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    export ANTHROPIC_MODEL="minimax-m2.7"
+    export ANTHROPIC_SMALL_FAST_MODEL="minimax-m2.7"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="minimax-m2.7"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="minimax-m2.7"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="minimax-m2.7"
+    ;;
+  anthropic)
+    # Default Anthropic - use whatever is already configured
+    unset ANTHROPIC_AUTH_TOKEN
+    ;;
+esac
+
+exec "${CMD[@]}"
