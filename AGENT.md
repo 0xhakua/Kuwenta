@@ -1,0 +1,537 @@
+# AGENT.md — Kuwenta Coding Agent Guide
+
+You are building **Kuwenta** — a Philippine individual tax compliance system for self-employed freelancers, with a Stellar blockchain layer for immutable filing receipts. Read this file completely before writing a single line of code.
+
+---
+
+## What You Are Building
+
+A Next.js 15 full-stack web application that:
+1. Guides Filipino freelancers through 8 mandatory BIR tax returns in the correct legally-mandated sequence
+2. Automates all tax computation from BIR Form 2307 income data
+3. Generates complete, BIR-compliant filing packages including SAWT
+4. Anchors every filed return as a tamper-proof receipt on the Stellar testnet
+
+This is a compliance-critical application. Incorrect computation or sequence enforcement is not a bug — it is a legal liability. Every business rule in SPEC.md is non-negotiable.
+
+---
+
+## Tech Stack — Exact Versions
+
+```json
+{
+  "next": "15.x",
+  "react": "19.x",
+  "typescript": "5.x",
+  "prisma": "5.x",
+  "@prisma/client": "5.x",
+  "tailwindcss": "3.x",
+  "stellar-sdk": "12.x",
+  "@react-pdf/renderer": "3.x",
+  "bcrypt": "5.x",
+  "jose": "5.x",
+  "zod": "3.x",
+  "pnpm": "9.x"
+}
+```
+
+Always install the latest stable version within each major. Run `pnpm outdated` before finalizing and upgrade any stale dependencies.
+
+---
+
+## Project Structure
+
+```
+kuwenta/
+├── app/                          # Next.js App Router
+│   ├── (auth)/
+│   │   └── login/
+│   │       └── page.tsx
+│   ├── (dashboard)/
+│   │   ├── layout.tsx            # Protected layout with sidebar
+│   │   ├── dashboard/page.tsx
+│   │   ├── onboarding/page.tsx
+│   │   ├── income/page.tsx
+│   │   ├── election/page.tsx
+│   │   ├── returns/
+│   │   │   ├── page.tsx
+│   │   │   └── [id]/page.tsx
+│   │   ├── prior-year-credit/page.tsx
+│   │   ├── sawt/page.tsx
+│   │   └── stellar/page.tsx
+│   ├── admin/
+│   │   └── page.tsx
+│   └── api/
+│       ├── auth/
+│       ├── taxpayer/
+│       ├── atc/
+│       ├── income/
+│       ├── election/
+│       ├── computation/
+│       ├── returns/
+│       ├── prior-year-credit/
+│       ├── overpayment/
+│       ├── penalties/
+│       ├── sawt/
+│       ├── filing-package/
+│       └── stellar/
+├── components/
+│   ├── ui/                       # shadcn/ui components
+│   ├── dashboard/
+│   ├── income/
+│   ├── returns/
+│   └── stellar/
+├── lib/
+│   ├── auth.ts                   # JWT helpers
+│   ├── prisma.ts                 # Prisma singleton
+│   ├── computation/
+│   │   ├── eligibility.ts        # 5-condition eligibility checker
+│   │   ├── percentage-tax.ts     # 2551Q computation
+│   │   ├── quarterly-income.ts   # 1701Q cumulative computation
+│   │   ├── annual-income.ts      # 1701A computation
+│   │   ├── penalties.ts          # Surcharge, interest, compromise
+│   │   └── due-dates.ts          # Statutory due dates + holiday rolling
+│   ├── stellar/
+│   │   ├── client.ts             # Stellar SDK setup
+│   │   ├── anchor.ts             # Anchor filing event on-chain
+│   │   └── verify.ts             # Verify TX against ledger
+│   ├── pdf/
+│   │   ├── form-2551q.tsx        # 2551Q PDF template
+│   │   ├── form-1701q.tsx        # 1701Q PDF template
+│   │   ├── form-1701a.tsx        # 1701A PDF template
+│   │   └── filing-package.tsx    # Cover sheet + package assembler
+│   └── storage.ts                # File storage abstraction (local/Railway)
+├── prisma/
+│   ├── schema.prisma
+│   └── seed.ts
+├── docker-compose.yml
+├── .env.example
+├── .env.local                    # Git-ignored
+└── SPEC.md
+```
+
+---
+
+## Core Principles
+
+### 1. Tax computation lives in `lib/computation/` — never in components or API handlers
+
+Every computation function must be:
+- **Pure** — same inputs always produce same outputs
+- **Typed** — use TypeScript types for all monetary values
+- **Tested** — write unit tests for every computation function using the reference figures from SPEC.md
+
+Reference test case (from the real engagement):
+```typescript
+// Full-year gross: ₱187,009.33
+// CWT withheld:   ₱18,700.92
+// Prior year credit: ₱54,270.00
+// Expected annual tax due: ₱0.00
+// Expected overpayment: ₱72,970.92
+```
+
+### 2. Use Decimal.js for all monetary arithmetic — never floating point
+
+```typescript
+import Decimal from 'decimal.js'
+
+// CORRECT
+const tax = grossIncome.minus(new Decimal('250000')).times('0.08')
+
+// WRONG — never do this
+const tax = (grossIncome - 250000) * 0.08
+```
+
+### 3. Business rules enforced at the API layer, not just the UI
+
+Every API route that modifies state must re-validate the relevant business rules server-side. Never trust the client to have enforced them.
+
+### 4. The filing sequence is a hard dependency graph — enforce it everywhere
+
+Before generating or filing any return, check the dependency chain:
+```typescript
+const SEQUENCE_DEPENDENCIES: Record<number, number[]> = {
+  1: [],           // 2551Q Q1 — no dependencies
+  2: [1],          // 2551Q Q2 — needs #1
+  3: [1, 2],       // 2551Q Q3
+  4: [1, 2, 3],    // 2551Q Q4
+  5: [1],          // 1701Q Q1 — needs Q1 2551Q
+  6: [1, 5],       // 1701Q Q2
+  7: [1, 5, 6],    // 1701Q Q3
+  8: [1, 5, 6, 7], // 1701A — needs all three 1701Qs
+}
+```
+
+---
+
+## Authentication
+
+- JWT stored in httpOnly, Secure, SameSite=Strict cookie — never localStorage
+- Use `jose` library for JWT signing and verification (not jsonwebtoken)
+- Token expiry: 8 hours
+- Middleware in `middleware.ts` protects all routes except `/login` and `/api/auth/login`
+- Admin role checked via `user.role === 'ADMIN'` from JWT payload
+- bcrypt rounds: 12
+
+```typescript
+// lib/auth.ts — token structure
+interface JWTPayload {
+  sub: string       // userId
+  username: string
+  role: 'ADMIN' | 'TAXPAYER'
+  iat: number
+  exp: number
+}
+```
+
+---
+
+## API Route Conventions
+
+All API routes follow this pattern:
+
+```typescript
+// app/api/[resource]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth'
+import { z } from 'zod'
+
+export async function POST(req: NextRequest) {
+  // 1. Auth check
+  const session = await requireAuth(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // 2. Input validation with Zod
+  const body = await req.json()
+  const result = schema.safeParse(body)
+  if (!result.success) return NextResponse.json({ error: result.error.format() }, { status: 400 })
+
+  // 3. Business logic
+  try {
+    // ...
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+Never expose stack traces or Prisma errors to the client. Log server-side, return generic error message.
+
+---
+
+## Prisma Usage
+
+```typescript
+// lib/prisma.ts — singleton for dev HMR
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
+  })
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+- Always use `prisma.$transaction()` for operations that must be atomic (e.g., marking return as filed + anchoring on Stellar)
+- Never run Prisma queries in React Server Components directly — always through API routes
+- Run `prisma migrate dev` for local, `prisma migrate deploy` for Railway
+
+---
+
+## Stellar Integration
+
+```typescript
+// lib/stellar/client.ts
+import { Horizon, Keypair, Networks } from '@stellar/stellar-sdk'
+
+export const horizon = new Horizon.Server(
+  process.env.STELLAR_HORIZON_URL ?? 'https://horizon-testnet.stellar.org'
+)
+
+export const networkPassphrase =
+  process.env.STELLAR_NETWORK === 'mainnet'
+    ? Networks.PUBLIC
+    : Networks.TESTNET
+
+export const systemKeypair = Keypair.fromSecret(process.env.STELLAR_SECRET_KEY!)
+```
+
+```typescript
+// lib/stellar/anchor.ts
+import crypto from 'crypto'
+import { horizon, networkPassphrase, systemKeypair } from './client'
+import { TransactionBuilder, Operation, Asset, BASE_FEE } from '@stellar/stellar-sdk'
+
+export async function anchorFilingReceipt(
+  returnId: string,
+  pdfBuffer: Buffer
+): Promise<string> {
+  const hash = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
+  const timestamp = new Date().toISOString()
+
+  const account = await horizon.loadAccount(systemKeypair.publicKey())
+
+  const tx = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase,
+  })
+    .addOperation(
+      Operation.manageData({
+        name: `tc:${returnId}`.substring(0, 64),
+        value: `${hash}:${timestamp}`.substring(0, 64),
+      })
+    )
+    .setTimeout(30)
+    .build()
+
+  tx.sign(systemKeypair)
+  const result = await horizon.submitTransaction(tx)
+  return result.hash
+}
+```
+
+Wrap Stellar calls in try/catch. A Stellar failure must NOT prevent the return from being marked as filed — log the failure, set `StellarReceipt.status = FAILED`, and expose a retry button in the UI.
+
+---
+
+## Tax Computation — Key Functions
+
+```typescript
+// lib/computation/quarterly-income.ts
+
+export function computeQuarterlyIncomeTax(
+  cumulativeGross: Decimal,
+  priorQuartersTaxPaid: Decimal,
+  exemption = new Decimal('250000')
+): Decimal {
+  const taxableIncome = Decimal.max(cumulativeGross.minus(exemption), 0)
+  const taxDue = taxableIncome.times('0.08')
+  const netTaxDue = Decimal.max(taxDue.minus(priorQuartersTaxPaid), 0)
+  return netTaxDue.toDecimalPlaces(2)
+}
+
+// lib/computation/annual-income.ts
+
+export function computeAnnualIncomeTax(
+  fullYearGross: Decimal,
+  priorYearCredit: Decimal,
+  quarterlyPayments: Decimal,
+  cwtWithheld: Decimal,
+  exemption = new Decimal('250000')
+): { taxDue: Decimal; totalCredits: Decimal; netPosition: Decimal } {
+  const taxableIncome = Decimal.max(fullYearGross.minus(exemption), 0)
+  const taxDue = taxableIncome.times('0.08').toDecimalPlaces(2)
+
+  // Credits in BIR-prescribed sequence
+  const totalCredits = priorYearCredit
+    .plus(quarterlyPayments)
+    .plus(cwtWithheld)
+    .toDecimalPlaces(2)
+
+  const netPosition = taxDue.minus(totalCredits).toDecimalPlaces(2)
+
+  return { taxDue, totalCredits, netPosition }
+  // netPosition < 0 means overpayment
+}
+```
+
+---
+
+## PDF Generation
+
+Use `@react-pdf/renderer` for all BIR forms. Each form is a React component that accepts typed props and renders a styled PDF.
+
+```typescript
+// lib/pdf/form-1701a.tsx
+import { Document, Page, Text, View } from '@react-pdf/renderer'
+
+interface Form1701AProps {
+  taxpayer: TaxpayerProfile
+  taxYear: number
+  computation: AnnualComputation
+  overpaymentDisposition?: OverpaymentOption
+}
+
+export function Form1701A({ taxpayer, taxYear, computation, overpaymentDisposition }: Form1701AProps) {
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* BIR form layout */}
+      </Page>
+    </Document>
+  )
+}
+```
+
+Generate PDFs server-side in API routes using `renderToBuffer()`. Store to Railway Volume. Never generate PDFs in the browser.
+
+---
+
+## Security Checklist
+
+Follow all of these without exception:
+
+**Authentication & Authorization**
+- [ ] All API routes check auth before any logic
+- [ ] Admin-only routes check `role === 'ADMIN'` explicitly
+- [ ] JWT in httpOnly cookie, never in localStorage or response body
+- [ ] Rotate NEXTAUTH_SECRET and JWT_SECRET in production — never commit them
+
+**Input Validation**
+- [ ] All API input validated with Zod before touching the database
+- [ ] TIN format validated: `/^\d{3}-\d{3}-\d{3}-\d{4}$/`
+- [ ] All monetary amounts parsed as strings and converted to Decimal — never as JS numbers
+- [ ] File uploads: validate MIME type and file size server-side
+
+**Data Isolation**
+- [ ] All database queries filter by the authenticated user's taxpayerId
+- [ ] Never expose another taxpayer's data — always scope queries with `WHERE taxpayerId = ?`
+- [ ] Admin can view all — non-admin can only see their own records
+
+**SQL Injection**
+- [ ] Use Prisma parameterized queries only — never raw SQL with string interpolation
+- [ ] If `prisma.$queryRaw` is used anywhere, use tagged template literals only
+
+**Audit Trail**
+- [ ] All state-changing actions (election, filing, Stellar anchoring) create an AuditLog entry
+- [ ] AuditLog is append-only — no update or delete operations on it ever
+
+**Stellar**
+- [ ] STELLAR_SECRET_KEY never logged, never sent to client
+- [ ] Stellar failures are caught and logged — never crash the request
+- [ ] Always use testnet unless STELLAR_NETWORK=mainnet is explicitly set
+
+**Headers & CORS**
+- [ ] Set `X-Content-Type-Options: nosniff`
+- [ ] Set `X-Frame-Options: DENY`
+- [ ] Set `Content-Security-Policy` appropriate for Next.js
+- [ ] API routes reject requests with unexpected Content-Type
+
+**Error Handling**
+- [ ] Never return Prisma error objects or stack traces to the client
+- [ ] Use structured error responses: `{ error: string, code?: string }`
+- [ ] Log all server errors with context (userId, route, timestamp)
+
+---
+
+## UI/UX Conventions
+
+- Use shadcn/ui components — do not build primitive UI components from scratch
+- Tailwind only — no inline styles, no CSS modules unless absolutely necessary
+- All monetary amounts displayed with Philippine Peso format: `₱1,234.56`
+- Form validation shown inline — no alert() calls ever
+- Loading states on all async actions (skeleton loaders for data, spinner for mutations)
+- Status colors: Filed = green-600, Pending = amber-500, Blocked = red-500
+- Mobile-responsive — the demo may be shown on a phone
+
+### Compliance Roadmap Component
+
+The filing sequence roadmap on the dashboard is the most critical UI component. It must:
+- Show all 8 returns in sequence with clear status indicators
+- Show the statutory deadline alongside each return
+- Show days until deadline (or days overdue in red)
+- Show Stellar TX ID with external link for filed returns
+- Be updated in real time when any return status changes
+
+---
+
+## Railway Deployment
+
+All services deploy to Railway. Use environment variable groups:
+
+```
+Production environment variables set in Railway dashboard:
+- DATABASE_URL (auto-injected by Railway Postgres plugin)
+- RAILWAY_VOLUME_MOUNT_PATH (auto-injected by Railway Volume)
+- NODE_ENV=production
+- All secrets from .env.example
+```
+
+Railway build command: `pnpm build`  
+Railway start command: `pnpm start`  
+Post-deploy command: `pnpm prisma migrate deploy`
+
+Do not commit `.env.local` or any file containing secrets. Use `.env.example` with placeholder values only.
+
+---
+
+## Development Setup Checklist
+
+When setting up a fresh development environment:
+
+```bash
+# 1. Clone and install
+git clone <repo>
+cd kuwenta
+pnpm install
+
+# 2. Copy env file
+cp .env.example .env.local
+# Fill in values in .env.local
+
+# 3. Start dev services
+docker-compose up -d
+
+# 4. Run migrations and seed
+pnpm prisma migrate dev
+pnpm prisma db seed
+
+# 5. Start dev server
+pnpm dev
+```
+
+Default admin credentials (from seed):
+- Username: `admin`
+- Password: value of `ADMIN_PASSWORD` in `.env.local`
+
+---
+
+## What NOT To Do
+
+- **Do not use `any` in TypeScript.** Use proper types or `unknown` with type guards.
+- **Do not use floating point for money.** Use `decimal.js` for all monetary arithmetic.
+- **Do not skip business rule validation to ship faster.** These rules exist because filing incorrectly has legal consequences.
+- **Do not generate BIR Form 1701 when 8% rate is elected.** Only 1701A. This is BR-08 and it is a hard rule.
+- **Do not let Stellar failures block tax filing.** Decouple them — file first, anchor async.
+- **Do not store the Stellar secret key in the database or send it to the client.**
+- **Do not use `console.log` for sensitive data** (TIN, amounts, Stellar keys) in production.
+- **Do not paginate the filing sequence.** All 8 returns must always be visible together.
+
+---
+
+## Reference Figures for Testing
+
+These are real figures from the reference engagement. Use them in all unit tests:
+
+```typescript
+const REFERENCE = {
+  fullYearGross: new Decimal('187009.33'),
+  cwtWithheld: new Decimal('18700.92'),
+  priorYearCredit: new Decimal('54270.00'),
+  q1Gross: new Decimal('39497.80'),
+  q1Cwt: new Decimal('3949.78'),
+  q2Gross: new Decimal('60291.42'),
+  q2Cwt: new Decimal('6029.14'),
+  q3Gross: new Decimal('57020.11'),
+  q3Cwt: new Decimal('5702.00'),
+  q4Gross: new Decimal('30200.00'),
+  q4Cwt: new Decimal('3020.00'),
+  expectedAnnualTaxDue: new Decimal('0.00'),
+  expectedOverpayment: new Decimal('72970.92'),
+  payors: [
+    { name: 'AXA Life Insurance Corp', atc: 'WI071' },
+    { name: 'Eternal Bright Sanctuary', atc: 'WI140' },
+  ]
+}
+```
+
+All computation functions must produce these exact outputs given these inputs.
+
+---
+
+*This agent guide is authoritative. When in doubt between speed and correctness, choose correctness — this is tax compliance software.*

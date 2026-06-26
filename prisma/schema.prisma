@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  username      String          @unique
+  passwordHash  String
+  role          Role            @default(TAXPAYER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  taxpayer      TaxpayerProfile?
+  auditLogs     AuditLog[]
+}
+
+enum Role {
+  ADMIN
+  TAXPAYER
+}
+
+model TaxpayerProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  tin             String    @unique  // NNN-NNN-NNN-NNNN
+  fullName        String
+  rdoCode         String
+  registeredAddress String
+  zipCode         String
+  natureOfBusiness  String
+  atcCodes        TaxpayerATC[]
+  taxYears        TaxYear[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ATCCode {
+  code        String        @id   // e.g. WI071
+  description String
+  ewtRate     Decimal       @db.Decimal(5, 4)  // e.g. 0.1000 for 10%
+  isActive    Boolean       @default(true)
+  taxpayers   TaxpayerATC[]
+  certificates Form2307[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model TaxpayerATC {
+  id          String          @id @default(cuid())
+  taxpayerId  String
+  atcCode     String
+  taxpayer    TaxpayerProfile @relation(fields: [taxpayerId], references: [id])
+  atc         ATCCode         @relation(fields: [atcCode], references: [code])
+  createdAt   DateTime        @default(now())
+}
+
+model TaxYear {
+  id              String          @id @default(cuid())
+  taxpayerId      String
+  taxpayer        TaxpayerProfile @relation(fields: [taxpayerId], references: [id])
+  year            Int             // e.g. 2025
+  electionStatus  ElectionStatus  @default(NOT_ELECTED)
+  electedRate     TaxRate?
+  electionDate    DateTime?
+  electionLockedAt DateTime?
+  vatBreached     Boolean         @default(false)
+  vatBreachDate   DateTime?
+  certificates    Form2307[]
+  returns         TaxReturn[]
+  priorYearCredit PriorYearCredit?
+  overpayment     Overpayment?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([taxpayerId, year])
+}
+
+enum ElectionStatus {
+  NOT_ELECTED
+  ELECTED_8PCT
+  ELECTED_GRADUATED
+}
+
+enum TaxRate {
+  RATE_8PCT
+  GRADUATED
+}
+
+model Form2307 {
+  id              String    @id @default(cuid())
+  taxYearId       String
+  taxYear         TaxYear   @relation(fields: [taxYearId], references: [id])
+  quarter         Int       // 1, 2, 3, or 4
+  payorTin        String
+  payorName       String
+  atcCode         String
+  atc             ATCCode   @relation(fields: [atcCode], references: [code])
+  month1Amount    Decimal   @db.Decimal(15, 2)
+  month2Amount    Decimal   @db.Decimal(15, 2)
+  month3Amount    Decimal   @db.Decimal(15, 2)
+  quarterlyTotal  Decimal   @db.Decimal(15, 2)
+  cwtWithheld     Decimal   @db.Decimal(15, 2)
+  cwtValidated    Boolean   @default(false)
+  cwtDiscrepancy  Decimal?  @db.Decimal(15, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model TaxReturn {
+  id              String        @id @default(cuid())
+  taxYearId       String
+  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id])
+  formType        FormType
+  quarter         Int?          // null for annual 1701A
+  sequenceOrder   Int           // 1–8
+  status          ReturnStatus  @default(BLOCKED)
+  computedTaxDue  Decimal?      @db.Decimal(15, 2)
+  taxCreditsTotal Decimal?      @db.Decimal(15, 2)
+  netTaxDue       Decimal?      @db.Decimal(15, 2)
+  overpaymentAmt  Decimal?      @db.Decimal(15, 2)
+  statutoryDueDate DateTime
+  filedDate       DateTime?
+  generatedAt     DateTime?
+  pdfPath         String?
+  penalties       ReturnPenalty?
+  stellarReceipt  StellarReceipt?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([taxYearId, formType, quarter])
+}
+
+enum FormType {
+  FORM_2551Q
+  FORM_1701Q
+  FORM_1701A
+}
+
+enum ReturnStatus {
+  BLOCKED
+  PENDING
+  GENERATED
+  FILED
+}
+
+model ReturnPenalty {
+  id                String      @id @default(cuid())
+  returnId          String      @unique
+  taxReturn         TaxReturn   @relation(fields: [returnId], references: [id])
+  daysLate          Int         @default(0)
+  surcharge         Decimal     @db.Decimal(15, 2) @default(0)
+  interest          Decimal     @db.Decimal(15, 2) @default(0)
+  compromisePenalty Decimal     @db.Decimal(15, 2) @default(0)
+  totalPenalty      Decimal     @db.Decimal(15, 2) @default(0)
+  computedAt        DateTime    @default(now())
+}
+
+model PriorYearCredit {
+  id              String    @id @default(cuid())
+  taxYearId       String    @unique
+  taxYear         TaxYear   @relation(fields: [taxYearId], references: [id])
+  amount          Decimal   @db.Decimal(15, 2)
+  originYear      Int
+  originForm      String
+  priorDisposition String   // must be "CARRY_OVER" to be eligible
+  isValidated     Boolean   @default(false)
+  userConfirmedAt DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model Overpayment {
+  id              String              @id @default(cuid())
+  taxYearId       String              @unique
+  taxYear         TaxYear             @relation(fields: [taxYearId], references: [id])
+  amount          Decimal             @db.Decimal(15, 2)
+  disposition     OverpaymentOption?
+  electedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+enum OverpaymentOption {
+  CARRY_OVER
+  REFUND
+  TAX_CREDIT_CERTIFICATE
+}
+
+model StellarReceipt {
+  id              String      @id @default(cuid())
+  returnId        String      @unique
+  taxReturn       TaxReturn   @relation(fields: [returnId], references: [id])
+  stellarTxId     String      @unique
+  payloadHash     String      // SHA-256 of the filing package PDF
+  network         String      @default("testnet")
+  anchoredAt      DateTime    @default(now())
+  explorerUrl     String
+  status          AnchorStatus @default(PENDING)
+}
+
+enum AnchorStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model RDOPenaltySchedule {
+  id              String    @id @default(cuid())
+  rdoCode         String    @unique
+  compromiseFee   Decimal   @db.Decimal(10, 2)  // per late return
+  updatedAt       DateTime  @updatedAt
+}
+
+model PublicHoliday {
+  id      String    @id @default(cuid())
+  date    DateTime  @db.Date
+  name    String
+  year    Int
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  action      String    // e.g. "8PCT_ELECTION_CONFIRMED", "RETURN_FILED", "STELLAR_ANCHORED"
+  entityType  String?   // e.g. "TaxReturn", "TaxYear"
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+}

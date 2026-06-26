@@ -1,0 +1,50 @@
+{
+  "name": "kuwenta",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@prisma/client": "^5",
+    "@react-pdf/renderer": "^3",
+    "@stellar/stellar-sdk": "^12",
+    "bcrypt": "^5",
+    "decimal.js": "^10",
+    "jose": "^5",
+    "next": "15.5.19",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/bcrypt": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.19",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "postcss": "^8",
+    "prisma": "^5",
+    "tailwindcss": "^3",
+    "ts-node": "^10",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "bcrypt",
+      "prisma"
+    ]
+  }
+}
