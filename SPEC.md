@@ -65,14 +65,23 @@ Step 1 — Personal Information
 - RDO Code
 - Registered address, ZIP code
 - Nature of business / profession
+- **Nature of Income** — single select: `Pure Self-Employment` or `Mixed Income (Salary + Freelance)`
+  - If `Mixed Income`: the ₱250,000 statutory exemption is NOT applied in any computation (already absorbed by the compensation side). Annual return is Form 1701, not 1701A. Legal basis: RR No. 8-2018 Sec. 3(D); RMC No. 50-2018; BIR Form 1701-MS (Aug 2024) Item 22.
+- **Are you a new BIR registrant?** — Yes / No
+  - If `Yes`: taxpayer elected 8% rate at the time of initial BIR registration via Form 1901. This is a valid pre-election — no Item 13 on 2551Q or Item 16 on 1701Q is required because the election was already made at registration. System records election status as confirmed and pre-populates the election flag. Legal basis: RR No. 8-2018 Sec. 3; BIR Form 1901.
+  - If `No`: election must be made via Item 13 on Q1 2551Q, Item 16 on Q1 1701Q, or Form 1905.
+- **COR includes 2551Q?** — Yes / No
+  - If `No`: taxpayer registered with BIR already declaring 8% at signup; BIR removes 2551Q from their registered tax types. Skip all 2551Q filings — total returns reduced from 8 to 4 (1701Q Q1, Q2, Q3, and 1701A only). Legal basis: RMO No. 23-2018 Sec. C.2.1–2.3; BIR Form 2303.
+  - If `Yes`: standard 8-return path applies.
+- **Annual Registration Fee** — as of January 22, 2024 under RA 11976 (Ease of Paying Taxes Act), the ₱500 annual BIR registration fee has been abolished. Only the ₱30 Documentary Stamp Tax applies. If onboarding references any registration costs, display ₱30 DST only — never ₱500. Legal basis: RA No. 11976 Sec. 18; RR No. 6-2024.
 
 Step 2 — Eligibility Check
 - System validates all 5 conditions simultaneously and displays pass/fail per condition:
   1. Individual taxpayer (not corporation or partnership)
-  2. Pure self-employment income (no salary income)
+  2. Income from self-employment or profession (mixed-income earners routed to separate path — no ₱250,000 deduction, Form 1701 as annual return)
   3. Non-VAT registered
   4. Gross receipts below ₱3,000,000
-  5. No prior Q1 return filed under graduated rate
+  5. No prior Q1 return filed under graduated rate for this taxable year
 - All 5 must pass to proceed
 
 Step 3 — ATC Code Setup
@@ -83,8 +92,9 @@ Step 3 — ATC Code Setup
 
 Step 4 — Tax Year Initialization
 - Confirm active taxable year
-- Initialize 8 return slots
+- Initialize return slots: 8 returns if COR includes 2551Q; 4 returns (1701Q x3 + 1701A) if COR does not
 - Election flag defaulted to "Not Yet Elected"
+- Income type flag stored (`PURE_SELF_EMPLOYMENT` or `MIXED_INCOME`) — used in all downstream computations
 
 ---
 
@@ -118,13 +128,18 @@ Consolidated Income Summary:
 
 Only accessible if Q1 2551Q has not yet been filed.
 
-- Displays two options clearly:
+- **Three valid election paths — system supports all three:**
+  1. **Item 13 on Q1 Form 2551Q** — standard path for taxpayers whose COR includes 2551Q
+  2. **Item 16 on Q1 Form 1701Q** — valid alternative; applicable to taxpayers whose COR does NOT include 2551Q. For these users, the Q1 1701Q is the first (and only quarterly income tax) return, and Item 16 is where the election is declared. Legal basis: RR No. 8-2018 Sec. 3; RMC No. 32-2018; RMO No. 23-2018 Sec. 7.
+  3. **BIR Form 1905 (COR update)** — election via RDO; when recorded in system, pre-populates Item 13 or Item 16 accordingly.
+- System detects which path applies based on the COR 2551Q flag set during onboarding
+- Displays two rate options:
   - (A) Graduated Income Tax Rate on Net Taxable Income
   - (B) 8% Income Tax Rate on Gross Sales/Receipts/Others
 - Selecting (B) triggers mandatory confirmation dialog with four disclosures:
   1. Election is irrevocable for the entire taxable year
-  2. Percentage tax is eliminated — 2551Q tax due will be ₱0.00
-  3. BIR Form 1701A is the required annual return
+  2. Percentage tax is eliminated (if 2551Q applies, tax due = ₱0.00 on all quarters)
+  3. BIR Form 1701A is the required annual return (or 1701 for mixed-income earners)
   4. Financial Statements are NOT required
 - User must check all four disclosures before confirming
 - Confirmation timestamped and logged to audit trail
@@ -219,7 +234,76 @@ Filing Package tab:
 
 ---
 
-### 10. `/stellar`
+### 10. `/journal`
+**Accounting Journal Entries**
+
+Auto-generated from all tax filing events already in the system. No manual entry required — every peso in the journal traces back to a 2307 certificate, a return filing, or an overpayment disposition.
+
+List view:
+- All journal entries for the active taxable year grouped by sub-section (9A–9G)
+- Columns: Entry #, Date, Trigger Event, Account, Debit, Credit, Regulation Reference
+- Filter by: sub-section, quarter, account name
+- Color coding: Debit-led entries (blue), Credit-led entries (green), Memo/no-cash entries (gray)
+- Download as XLSX button (single workbook, two sheets — see below)
+
+**7 Sub-sections, 20 Journal Entry Requirements:**
+
+**9A — Income Recognition (triggered by each 2307 entry)**
+- 9.1 Dr. Cash (net received) + Dr. CWT Receivable → Cr. Service Income (gross)
+- 9.2 Amendment/reversal entry when a 2307 is edited or deleted
+
+**9B — Quarterly Percentage Tax / Form 2551Q**
+- 9.3 Under 8% election: memo entry only (tax due = ₱0.00, no cash movement)
+- 9.4 Under graduated rate: Dr. Percentage Tax Expense → Cr. Percentage Tax Payable
+- 9.5 Dr. Percentage Tax Payable → Cr. Cash (on payment)
+
+**9C — Quarterly Income Tax / Form 1701Q (Q1–Q3)**
+- 9.6 Dr. Income Tax Expense → Cr. Income Tax Payable (tax accrual per quarter)
+- 9.7 Dr. Income Tax Payable → Cr. CWT Receivable (CWT credit applied)
+- 9.8 Dr. Income Tax Payable → Cr. Cash (cash payment of remaining balance)
+- 9.9 CWT excess carry-forward noted as memo when CWT > tax due (no entry, balance remains in CWT Receivable)
+
+**9D — Prior Year Carry-Over Credit**
+- 9.10 Opening entry at start of year: Dr. Prepaid Income Tax → Cr. Income Tax Overpayment
+- 9.11 Application in 1701A Item 31: Dr. Income Tax Payable → Cr. Prepaid Income Tax
+
+**9E — Annual Income Tax / Form 1701A**
+- 9.12 Year-end true-up: Dr. Income Tax Expense → Cr. Income Tax Payable (Q4 accrual)
+- 9.13 Final CWT application: Dr. Income Tax Payable → Cr. CWT Receivable
+- 9.14 Final cash payment if tax still due: Dr. Income Tax Payable → Cr. Cash
+
+**9F — Overpayment Disposition**
+- 9.15 Carry Over elected: Dr. Prepaid Income Tax → Cr. Income Tax Receivable
+- 9.16 Carry Over applied next year: Dr. Income Tax Payable → Cr. Prepaid Income Tax
+- 9.17 Refund elected (Step 1): Dr. Income Tax Refund Receivable → Cr. Income Tax Expense
+- 9.18 Refund received (Step 2): Dr. Cash → Cr. Income Tax Refund Receivable
+- 9.19 TCC elected (Step 1): Dr. Tax Credit Certificate Asset → Cr. Income Tax Expense
+- 9.20 TCC applied (Step 2): Dr. Income Tax Payable → Cr. Tax Credit Certificate Asset
+
+**9G — Year-End Closing Entries**
+- Closing entry for Service Income → Retained Earnings
+- Closing entry for Income Tax Expense → Retained Earnings
+- Closing entry for Percentage Tax Expense → Retained Earnings
+- Note: Prepaid Income Tax carries forward without a closing entry
+
+**XLSX Export — Two Sheets:**
+
+Sheet 1 — Journal Entries
+- Columns: Entry #, Sub-section, Trigger/Event, Journal Entry Lines, Revenue Regulation, Workflow/Menu
+- Cell background in Journal Entry column: blue (debit-led), green (credit-led), light gray (memo/no cash)
+
+Sheet 2 — Legend & Notes
+- Color coding explanation
+- Journal entry format conventions
+- Key notes: ₱250,000 deduction not separately journalised (embedded in Income Tax Expense amount), CWT Receivable lifecycle, Prepaid Income Tax carry-forward, two-step entries for Refund and TCC
+
+**Important note on deductions vs. tax credits:**
+- ₱250,000 exemption — NOT journalised separately. It is already embedded in the Dr. Income Tax Expense amount (computed on gross − ₱250,000 × 8%). No separate entry.
+- CWT credits — fully journalised via CWT Receivable account (opened in 9.1, progressively closed across quarters and annual in 9.7, 9.9, 9.13)
+
+---
+
+### 11. `/stellar`
 **Stellar Compliance Receipts**
 
 - List of all Stellar on-chain filing records for the taxpayer
@@ -334,6 +418,15 @@ GET    /api/filing-package      — Get full filing package metadata
 GET    /api/filing-package/download — Stream ZIP of all 8 returns + SAWT + cover sheet
 ```
 
+### Journal Entries
+```
+GET    /api/journal                      — List all journal entries for active tax year
+GET    /api/journal/[subsection]         — Get entries for a specific sub-section (9A–9G)
+POST   /api/journal/generate             — Trigger full regeneration of all journal entries from existing data
+GET    /api/journal/export               — Download XLSX workbook (2 sheets: entries + legend)
+GET    /api/journal/accounts             — List all chart of accounts used in journal entries
+```
+
 ### Stellar Integration
 ```
 GET    /api/stellar/receipts         — List all on-chain filing records for current taxpayer
@@ -397,6 +490,9 @@ model TaxpayerProfile {
   registeredAddress String
   zipCode         String
   natureOfBusiness  String
+  incomeType        IncomeType      @default(PURE_SELF_EMPLOYMENT)  // PURE_SELF_EMPLOYMENT or MIXED_INCOME
+  corIncludes2551Q  Boolean         @default(true)                  // false = BIR removed 2551Q from COR at registration
+  isNewRegistrant   Boolean         @default(false)                 // true = elected 8% on Form 1901 at initial BIR registration; election pre-confirmed
   atcCodes        TaxpayerATC[]
   taxYears        TaxYear[]
   createdAt       DateTime  @default(now())
@@ -438,10 +534,16 @@ model TaxYear {
   returns         TaxReturn[]
   priorYearCredit PriorYearCredit?
   overpayment     Overpayment?
+  journalEntries  JournalEntry[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   @@unique([taxpayerId, year])
+}
+
+enum IncomeType {
+  PURE_SELF_EMPLOYMENT
+  MIXED_INCOME
 }
 
 enum ElectionStatus {
@@ -579,6 +681,34 @@ model RDOPenaltySchedule {
   updatedAt       DateTime  @updatedAt
 }
 
+model JournalEntry {
+  id              String        @id @default(cuid())
+  taxYearId       String
+  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id])
+  entryNumber     String        // e.g. "9.1", "9.2"
+  subsection      String        // "9A" through "9G"
+  triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
+  triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  entryDate       DateTime
+  lines           JournalLine[]
+  regulationRef   String?       // e.g. "RR No. 8-2018"
+  workflowMenu    String?       // e.g. "Income > Add 2307"
+  isMemo          Boolean       @default(false)  // true = no cash movement, informational only
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model JournalLine {
+  id              String        @id @default(cuid())
+  entryId         String
+  entry           JournalEntry  @relation(fields: [entryId], references: [id])
+  lineOrder       Int
+  accountCode     String
+  accountName     String        // e.g. "CWT Receivable", "Service Income"
+  debit           Decimal?      @db.Decimal(15, 2)
+  credit          Decimal?      @db.Decimal(15, 2)
+}
+
 model PublicHoliday {
   id      String    @id @default(cuid())
   date    DateTime  @db.Date
@@ -707,14 +837,24 @@ STELLAR_FRIENDBOT_URL=https://friendbot.stellar.org
 | BR-10: No cross-tax CWT offset | Computation engine maintains separate credit pools for income tax and percentage tax |
 | BR-11: Election resets each year | `TaxYear` record initializes `electionStatus = NOT_ELECTED` on each new year |
 | BR-12: VAT threshold revocation | Income ingestion checks running total after every `POST /api/income`; triggers revocation at ₱3,000,000 |
+| BR-13: Mixed-income earners — no ₱250k exemption | If `incomeType === MIXED_INCOME`, exemption is set to ₱0 in all 1701Q and 1701A computations. Legal basis: RR No. 8-2018 Sec. 3(D) |
+| BR-14: No 2551Q if not in COR | If `corIncludes2551Q === false`, filing sequence skips all 2551Q returns. Election is made via Item 16 on Q1 1701Q instead. Total returns = 4. Legal basis: RMO No. 23-2018 Sec. C.2.1 |
+| BR-15: Penalty rates per Ease of Paying Taxes Act | Surcharge = 10% (not 25%); Interest = 6% p.a. (not 12%) for taxpayers with gross receipts < ₱3,000,000. All Kuwenta users qualify. Legal basis: RA No. 11976; RR No. 6-2024; RR No. 8-2024 |
+| BR-16: Annual registration fee is ₱30 DST only | The ₱500 annual BIR registration fee was abolished under RA 11976 effective January 22, 2024. Never display or reference ₱500. Only ₱30 Documentary Stamp Tax applies. Legal basis: RA No. 11976 Sec. 18; RR No. 6-2024 |
+| BR-17: 1701A is scoped to 8% electees only in Kuwenta | OSD taxpayers on graduated rates also use 1701A in real life, but Kuwenta does not serve them. Hard-block 1701A generation for any user not on active 8% election. Display out-of-scope message for OSD/graduated rate users. |
+| BR-18: New registrants who elected 8% on Form 1901 are pre-elected | No Item 13 or Item 16 election required in-app. Mark election as confirmed at onboarding if `isNewRegistrant = true`. Legal basis: RR No. 8-2018 Sec. 3; BIR Form 1901 |
 
 ---
 
 ## Penalty Computation Logic
 
 ```
-surcharge = (taxDue > 0 && daysLate > 0) ? taxDue * 0.25 : 0
-interest  = (taxDue > 0 && daysLate > 0) ? taxDue * 0.12 * (daysLate / 365) : 0
+// Ease of Paying Taxes Act (RA 11976, effective Jan 22, 2024) lowered rates
+// for small taxpayers (gross receipts < ₱3,000,000). All Kuwenta users qualify.
+// RR No. 6-2024 (effective Apr 27, 2024); RR No. 8-2024
+
+surcharge = (taxDue > 0 && daysLate > 0) ? taxDue * 0.10 : 0   // was 25% under old law
+interest  = (taxDue > 0 && daysLate > 0) ? taxDue * 0.06 * (daysLate / 365) : 0  // was 12%
 compromise = (daysLate > 0) ? rdoPenaltySchedule[rdoCode].compromiseFee : 0
 total = surcharge + interest + compromise
 ```

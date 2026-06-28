@@ -9,7 +9,7 @@ Built for the APAC Stellar Hackathon 2026 — Local Finance & Real World Access 
 - Next.js 15 (App Router)
 - React 19 + TypeScript 5
 - Prisma 5 + PostgreSQL
-- Tailwind CSS 3 + shadcn/ui
+- Tailwind CSS 4 + shadcn/ui
 - Stellar SDK
 - @react-pdf/renderer
 
@@ -37,6 +37,16 @@ pnpm dev
 Default admin credentials (from seed):
 - Username: `admin`
 - Password: value of `ADMIN_PASSWORD` in `.env.local`
+
+Test taxpayer accounts (from seed):
+
+| Username | Password   | Income Type          | COR includes 2551Q | Filing Path |
+|----------|------------|----------------------|--------------------|-------------|
+| `maria`  | `Test1234!` | Pure Self-Employment | Yes                | 8 returns   |
+| `juan`   | `Test1234!` | Mixed Income         | Yes                | 8 returns   |
+| `anna`   | `Test1234!` | Pure Self-Employment | No                 | 4 returns   |
+
+All test accounts are fully onboarded with a 2026 tax year and return slots initialized.
 
 ## Project Documentation
 

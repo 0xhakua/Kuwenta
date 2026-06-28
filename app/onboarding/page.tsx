@@ -1,0 +1,363 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+
+type ATCCode = {
+  code: string
+  description: string
+  ewtRate: number
+}
+
+type EligibilityCheck = {
+  passed: boolean
+  checks: {
+    individual: boolean
+    selfEmploymentIncome: boolean
+    nonVatRegistered: boolean
+    belowVatThreshold: boolean
+    noPriorQ1GraduatedReturn: boolean
+  }
+  grossReceipts: string
+  vatThreshold: string
+}
+
+const steps = ['Personal Information', 'Eligibility Check', 'ATC Codes', 'Tax Year']
+
+export default function OnboardingPage() {
+  const router = useRouter()
+  const [step, setStep] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [atcCodes, setAtcCodes] = useState<ATCCode[]>([])
+
+  const [form, setForm] = useState({
+    tin: '',
+    fullName: '',
+    rdoCode: '',
+    registeredAddress: '',
+    zipCode: '',
+    natureOfBusiness: '',
+    incomeType: 'PURE_SELF_EMPLOYMENT',
+    corIncludes2551Q: 'true',
+    selectedAtcCodes: [] as string[],
+    taxYear: new Date().getFullYear(),
+  })
+
+  const [eligibility, setEligibility] = useState<EligibilityCheck | null>(null)
+
+  useEffect(() => {
+    fetch('/api/atc')
+      .then((res) => res.json())
+      .then((data) => setAtcCodes(data.codes || []))
+      .catch(() => setError('Failed to load ATC codes'))
+  }, [])
+
+  function updateField(field: string, value: string | number | boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function toggleAtc(code: string) {
+    setForm((prev) => ({
+      ...prev,
+      selectedAtcCodes: prev.selectedAtcCodes.includes(code)
+        ? prev.selectedAtcCodes.filter((c) => c !== code)
+        : [...prev.selectedAtcCodes, code],
+    }))
+  }
+
+  async function checkEligibility() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/taxpayer/eligibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          incomeType: form.incomeType,
+          grossReceipts: '0',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Eligibility check failed')
+        return
+      }
+      setEligibility(data)
+      setStep(1)
+    } catch {
+      setError('Eligibility check failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function submit() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/taxpayer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tin: form.tin,
+          fullName: form.fullName,
+          rdoCode: form.rdoCode,
+          registeredAddress: form.registeredAddress,
+          zipCode: form.zipCode,
+          natureOfBusiness: form.natureOfBusiness,
+          incomeType: form.incomeType,
+          corIncludes2551Q: form.corIncludes2551Q === 'true',
+          atcCodes: form.selectedAtcCodes,
+          taxYear: form.taxYear,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to complete onboarding')
+        return
+      }
+      router.push('/dashboard')
+    } catch {
+      setError('Failed to complete onboarding')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function renderStep() {
+    switch (step) {
+      case 0:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={form.fullName}
+                  onChange={(e) => updateField('fullName', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tin">TIN (NNN-NNN-NNN-NNNN)</Label>
+                <Input
+                  id="tin"
+                  value={form.tin}
+                  onChange={(e) => updateField('tin', e.target.value)}
+                  placeholder="000-000-000-0000"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="rdoCode">RDO Code</Label>
+                <Input
+                  id="rdoCode"
+                  value={form.rdoCode}
+                  onChange={(e) => updateField('rdoCode', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zipCode">ZIP Code</Label>
+                <Input
+                  id="zipCode"
+                  value={form.zipCode}
+                  onChange={(e) => updateField('zipCode', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="registeredAddress">Registered Address</Label>
+              <Input
+                id="registeredAddress"
+                value={form.registeredAddress}
+                onChange={(e) => updateField('registeredAddress', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="natureOfBusiness">Nature of Business / Profession</Label>
+              <Input
+                id="natureOfBusiness"
+                value={form.natureOfBusiness}
+                onChange={(e) => updateField('natureOfBusiness', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="incomeType">Nature of Income</Label>
+              <Select
+                value={form.incomeType}
+                onValueChange={(value) => value && updateField('incomeType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select income type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PURE_SELF_EMPLOYMENT">Pure Self-Employment</SelectItem>
+                  <SelectItem value="MIXED_INCOME">Mixed Income (Salary + Freelance)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>COR includes 2551Q?</Label>
+              <RadioGroup
+                value={form.corIncludes2551Q}
+                onValueChange={(value) => updateField('corIncludes2551Q', value)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="true" id="cor-yes" />
+                  <Label htmlFor="cor-yes" className="font-normal">Yes — 8-return filing path</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="false" id="cor-no" />
+                  <Label htmlFor="cor-no" className="font-normal">No — 4-return filing path (1701Q only)</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+        )
+      case 1:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              All 5 conditions must pass to use the 8% flat income tax rate.
+            </p>
+            {eligibility && (
+              <div className="space-y-2">
+                {Object.entries(eligibility.checks).map(([key, passed]) => (
+                  <div
+                    key={key}
+                    className={`flex justify-between rounded-md border p-3 ${
+                      passed ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                    }`}
+                  >
+                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span className={passed ? 'text-green-700' : 'text-red-700'}>
+                      {passed ? 'Pass' : 'Fail'}
+                    </span>
+                  </div>
+                ))}
+                <p className="text-sm">
+                  Gross receipts: ₱{Number(eligibility.grossReceipts).toLocaleString()} /
+                  VAT threshold: ₱{Number(eligibility.vatThreshold).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+        )
+      case 2:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Select all ATC codes that apply to your freelance work.</p>
+            <div className="grid gap-3">
+              {atcCodes.map((atc) => (
+                <div key={atc.code} className="flex items-start space-x-3 rounded-md border p-3">
+                  <Checkbox
+                    id={atc.code}
+                    checked={form.selectedAtcCodes.includes(atc.code)}
+                    onCheckedChange={() => toggleAtc(atc.code)}
+                  />
+                  <div className="grid gap-1">
+                    <Label htmlFor={atc.code} className="font-normal">
+                      {atc.code} — {atc.description}
+                    </Label>
+                    <span className="text-sm text-muted-foreground">EWT rate: {(atc.ewtRate * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="taxYear">Active Taxable Year</Label>
+              <Input
+                id="taxYear"
+                type="number"
+                value={form.taxYear}
+                onChange={(e) => updateField('taxYear', Number(e.target.value))}
+                required
+              />
+            </div>
+            <div className="rounded-md border p-4 text-sm">
+              <p className="font-medium">Filing sequence preview:</p>
+              <p className="text-muted-foreground">
+                {form.corIncludes2551Q === 'true'
+                  ? '8 returns: 2551Q Q1–Q4, 1701Q Q1–Q3, 1701A'
+                  : '4 returns: 1701Q Q1–Q3, 1701A'}
+              </p>
+            </div>
+          </div>
+        )
+    }
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Onboarding</CardTitle>
+          <CardDescription>Step {step + 1} of {steps.length}: {steps[step]}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {renderStep()}
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0 || loading}
+            >
+              Back
+            </Button>
+            {step < steps.length - 1 ? (
+              <Button
+                onClick={() => {
+                  if (step === 0) {
+                    checkEligibility()
+                  } else {
+                    setStep((s) => s + 1)
+                  }
+                }}
+                disabled={loading}
+              >
+                {step === 0 ? 'Check Eligibility' : 'Next'}
+              </Button>
+            ) : (
+              <Button onClick={submit} disabled={loading}>
+                {loading ? 'Completing...' : 'Complete Onboarding'}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "IncomeType" AS ENUM ('PURE_SELF_EMPLOYMENT', 'MIXED_INCOME');
+
+-- AlterTable
+ALTER TABLE "TaxpayerProfile" ADD COLUMN     "corIncludes2551Q" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "incomeType" "IncomeType" NOT NULL DEFAULT 'PURE_SELF_EMPLOYMENT';

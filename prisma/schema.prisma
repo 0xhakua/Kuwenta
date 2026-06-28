@@ -24,19 +24,21 @@ enum Role {
 }
 
 model TaxpayerProfile {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  user            User      @relation(fields: [userId], references: [id])
-  tin             String    @unique  // NNN-NNN-NNN-NNNN
-  fullName        String
-  rdoCode         String
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  user              User       @relation(fields: [userId], references: [id])
+  tin               String     @unique  // NNN-NNN-NNN-NNNN
+  fullName          String
+  rdoCode           String
   registeredAddress String
-  zipCode         String
+  zipCode           String
   natureOfBusiness  String
-  atcCodes        TaxpayerATC[]
-  taxYears        TaxYear[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  incomeType        IncomeType @default(PURE_SELF_EMPLOYMENT)
+  corIncludes2551Q  Boolean    @default(true)
+  atcCodes          TaxpayerATC[]
+  taxYears          TaxYear[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 }
 
 model ATCCode {
@@ -78,6 +80,11 @@ model TaxYear {
   updatedAt       DateTime        @updatedAt
 
   @@unique([taxpayerId, year])
+}
+
+enum IncomeType {
+  PURE_SELF_EMPLOYMENT
+  MIXED_INCOME
 }
 
 enum ElectionStatus {

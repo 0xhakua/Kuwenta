@@ -83,6 +83,17 @@ kuwenta/
 │   └── stellar/
 ├── lib/
 │   ├── auth.ts                   # JWT helpers
+│   ├── journal/
+│   │   ├── generator.ts          # Main orchestrator — generates all entries from existing data
+│   │   ├── entries/
+│   │   │   ├── 9a-income.ts      # 2307 income recognition entries (9.1–9.2)
+│   │   │   ├── 9b-2551q.ts       # Percentage tax entries (9.3–9.5)
+│   │   │   ├── 9c-1701q.ts       # Quarterly income tax entries (9.6–9.9)
+│   │   │   ├── 9d-prior-year.ts  # Prior year carry-over entries (9.10–9.11)
+│   │   │   ├── 9e-1701a.ts       # Annual income tax entries (9.12–9.14)
+│   │   │   ├── 9f-overpayment.ts # Overpayment disposition entries (9.15–9.20)
+│   │   │   └── 9g-closing.ts     # Year-end closing entries
+│   │   └── xlsx-export.ts        # XLSX workbook generator (2 sheets)
 │   ├── prisma.ts                 # Prisma singleton
 │   ├── computation/
 │   │   ├── eligibility.ts        # 5-condition eligibility checker
@@ -150,16 +161,37 @@ Every API route that modifies state must re-validate the relevant business rules
 
 Before generating or filing any return, check the dependency chain:
 ```typescript
-const SEQUENCE_DEPENDENCIES: Record<number, number[]> = {
-  1: [],           // 2551Q Q1 — no dependencies
-  2: [1],          // 2551Q Q2 — needs #1
+// RA 11976 (Ease of Paying Taxes Act) — effective Jan 22, 2024
+// All Kuwenta users earn < ₱3,000,000 so ALL qualify for reduced rates
+// RR No. 6-2024 (effective Apr 27, 2024); RR No. 8-2024
+const SURCHARGE_RATE = 0.10   // was 0.25 before RA 11976
+const INTEREST_RATE  = 0.06   // was 0.12 before RA 11976
+```
+
+```typescript
+// Standard path (COR includes 2551Q) — 8 returns
+const SEQUENCE_DEPENDENCIES_8: Record<number, number[]> = {
+  1: [],           // 2551Q Q1 — election on Item 13; no dependencies
+  2: [1],          // 2551Q Q2
   3: [1, 2],       // 2551Q Q3
   4: [1, 2, 3],    // 2551Q Q4
   5: [1],          // 1701Q Q1 — needs Q1 2551Q
   6: [1, 5],       // 1701Q Q2
   7: [1, 5, 6],    // 1701Q Q3
-  8: [1, 5, 6, 7], // 1701A — needs all three 1701Qs
+  8: [1, 5, 6, 7], // 1701A
 }
+
+// Reduced path (COR does NOT include 2551Q) — 4 returns
+// Election made on Item 16 of Q1 1701Q instead of Item 13 of Q1 2551Q
+// Legal basis: RMO No. 23-2018 Sec. C.2.1; RR No. 8-2018 Sec. 3
+const SEQUENCE_DEPENDENCIES_4: Record<number, number[]> = {
+  1: [],     // 1701Q Q1 — election on Item 16
+  2: [1],    // 1701Q Q2
+  3: [1, 2], // 1701Q Q3
+  4: [1, 2, 3], // 1701A
+}
+
+// Use taxpayer.corIncludes2551Q to select which dependency map applies
 ```
 
 ---
@@ -181,6 +213,13 @@ interface JWTPayload {
   role: 'ADMIN' | 'TAXPAYER'
   iat: number
   exp: number
+}
+
+// Onboarding flags that affect all downstream logic — always pass these through
+interface TaxpayerFlags {
+  incomeType: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME'
+  corIncludes2551Q: boolean   // false = 4-return path, election via 1701Q Item 16
+  isNewRegistrant: boolean    // true = election pre-confirmed via Form 1901; skip election step
 }
 ```
 
@@ -307,8 +346,12 @@ Wrap Stellar calls in try/catch. A Stellar failure must NOT prevent the return f
 export function computeQuarterlyIncomeTax(
   cumulativeGross: Decimal,
   priorQuartersTaxPaid: Decimal,
-  exemption = new Decimal('250000')
+  incomeType: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME' = 'PURE_SELF_EMPLOYMENT'
 ): Decimal {
+  // Mixed-income earners do NOT get the ₱250,000 exemption on freelance income —
+  // it is already consumed by their compensation income side.
+  // Legal basis: RR No. 8-2018 Sec. 3(D); RMC No. 50-2018
+  const exemption = incomeType === 'MIXED_INCOME' ? new Decimal('0') : new Decimal('250000')
   const taxableIncome = Decimal.max(cumulativeGross.minus(exemption), 0)
   const taxDue = taxableIncome.times('0.08')
   const netTaxDue = Decimal.max(taxDue.minus(priorQuartersTaxPaid), 0)
@@ -322,8 +365,10 @@ export function computeAnnualIncomeTax(
   priorYearCredit: Decimal,
   quarterlyPayments: Decimal,
   cwtWithheld: Decimal,
-  exemption = new Decimal('250000')
+  incomeType: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME' = 'PURE_SELF_EMPLOYMENT'
 ): { taxDue: Decimal; totalCredits: Decimal; netPosition: Decimal } {
+  // No ₱250,000 exemption for mixed-income earners on the freelance side
+  const exemption = incomeType === 'MIXED_INCOME' ? new Decimal('0') : new Decimal('250000')
   const taxableIncome = Decimal.max(fullYearGross.minus(exemption), 0)
   const taxDue = taxableIncome.times('0.08').toDecimalPlaces(2)
 
@@ -491,6 +536,25 @@ Default admin credentials (from seed):
 
 ---
 
+## Journal Entry Trigger Map
+
+Every journal entry is generated automatically by a system event. Never generate entries manually.
+
+| Trigger Event | Sub-section | Entries Generated |
+|---|---|---|
+| `POST /api/income` (2307 added) | 9A | 9.1 — income recognition + CWT receivable |
+| `PUT /api/income/[id]` (2307 amended) | 9A | 9.2 reversal, then new 9.1 |
+| `POST /api/returns/[id]/file` for 2551Q under 8% | 9B | 9.3 memo only |
+| `POST /api/returns/[id]/file` for 2551Q under graduated | 9B | 9.4 + 9.5 |
+| `POST /api/returns/[id]/file` for 1701Q | 9C | 9.6 + 9.7 + 9.8 (or 9.9 memo if CWT > tax due) |
+| `POST /api/prior-year-credit` | 9D | 9.10 opening entry |
+| 1701A computation (prior year credit applied) | 9D | 9.11 application entry |
+| `POST /api/returns/[id]/file` for 1701A | 9E | 9.12 + 9.13 + 9.14 |
+| `POST /api/overpayment/[taxYear]` — Carry Over | 9F | 9.15 + 9.16 (next year on application) |
+| `POST /api/overpayment/[taxYear]` — Refund | 9F | 9.17 (9.18 when cash received) |
+| `POST /api/overpayment/[taxYear]` — TCC | 9F | 9.19 (9.20 when TCC applied) |
+| Year-end (Dec 31 or on 1701A filing) | 9G | Closing entries for income + expense accounts |
+
 ## What NOT To Do
 
 - **Do not use `any` in TypeScript.** Use proper types or `unknown` with type guards.
@@ -500,7 +564,17 @@ Default admin credentials (from seed):
 - **Do not let Stellar failures block tax filing.** Decouple them — file first, anchor async.
 - **Do not store the Stellar secret key in the database or send it to the client.**
 - **Do not use `console.log` for sensitive data** (TIN, amounts, Stellar keys) in production.
-- **Do not paginate the filing sequence.** All 8 returns must always be visible together.
+- **Do not paginate the filing sequence.** All 8 returns must always be visible together (or 4 returns for the no-2551Q path).
+- **Do not apply ₱250,000 exemption to mixed-income earners.** Check `incomeType` before every computation. Using the wrong exemption produces an understated tax liability.
+- **Do not use old penalty rates (25% surcharge, 12% interest).** RA 11976 (Ease of Paying Taxes Act) reduced these to 10% and 6% respectively for taxpayers earning below ₱3,000,000. All Kuwenta users qualify. Using the old rates overstates penalties.
+- **Do not hardcode the election to Item 13 of 2551Q only.** Taxpayers whose COR does not include 2551Q elect via Item 16 of Q1 1701Q. Always check `corIncludes2551Q` first.
+- **Do not require an in-app election for new registrants.** If `isNewRegistrant = true`, the taxpayer already elected 8% on BIR Form 1901 at registration. Mark election as pre-confirmed at onboarding — do not prompt them to elect again.
+- **Do not reference the ₱500 annual registration fee anywhere.** It was abolished under RA 11976 effective January 22, 2024. Only ₱30 DST applies. Any hardcoded ₱500 in UI copy, help text, or checklists must be removed.
+- **Do not generate Form 1701A for OSD or graduated rate users.**
+- **Do not create a separate journal entry for the ₱250,000 deduction.** It is embedded in the Income Tax Expense amount. Only the final computed tax figure is journalised.
+- **Do not hardcode account names.** Use the `accountName` field from the `JournalLine` model — it must be consistent across all entries (e.g. always "CWT Receivable", never "CWT" or "Withholding Tax Receivable").
+- **Do not regenerate journal entries on every page load.** Generate them on trigger events (2307 added/amended, return filed, overpayment disposition elected). Cache in the `JournalEntry` table.
+- **Journal entries must be reversible.** When a 2307 is amended, entry 9.2 (reversal) must be created before 9.1 is re-posted with the corrected amounts. Kuwenta scopes 1701A to 8% electees only. If a user is not on active 8% election, block 1701A generation and show an out-of-scope message.
 
 ---
 
