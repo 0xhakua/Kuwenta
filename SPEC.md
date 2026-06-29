@@ -421,7 +421,9 @@ GET    /api/filing-package/download — Stream ZIP of all 8 returns + SAWT + cov
 ### Journal Entries
 ```
 GET    /api/journal                      — List all journal entries for active tax year
+                                             Filters: ?subsection=9A&quarter=1&accountName=CWT
 GET    /api/journal/[subsection]         — Get entries for a specific sub-section (9A–9G)
+                                             Filters: ?quarter=1&accountName=CWT
 POST   /api/journal/generate             — Trigger full regeneration of all journal entries from existing data
 GET    /api/journal/export               — Download XLSX workbook (2 sheets: entries + legend)
 GET    /api/journal/accounts             — List all chart of accounts used in journal entries
@@ -684,11 +686,12 @@ model RDOPenaltySchedule {
 model JournalEntry {
   id              String        @id @default(cuid())
   taxYearId       String
-  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id])
+  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id], onDelete: Cascade)
   entryNumber     String        // e.g. "9.1", "9.2"
   subsection      String        // "9A" through "9G"
   triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
   triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  quarter         Int?          // 1-4 for quarterly entries (9A/9B/9C); null for annual (9D-9G)
   entryDate       DateTime
   lines           JournalLine[]
   regulationRef   String?       // e.g. "RR No. 8-2018"
