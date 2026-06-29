@@ -3,6 +3,7 @@ import Decimal from 'decimal.js'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { determineReturnStatus } from '@/lib/computation/sequence'
+import { buildAttachmentsChecklist } from '@/lib/filing-package/attachments'
 
 export async function GET() {
   const session = await requireAuth()
@@ -22,7 +23,7 @@ export async function GET() {
             priorYearCredit: true,
             returns: {
               orderBy: { sequenceOrder: 'asc' },
-              include: { stellarReceipt: true },
+              include: { stellarReceipt: true, penalties: true },
             },
           },
         },
@@ -51,49 +52,51 @@ export async function GET() {
       label: `${ret.formType.replace('FORM_', '')} ${ret.quarter ? `Q${ret.quarter}` : 'Annual'}`,
       status: determineReturnStatus(ret.sequenceOrder, taxYear.returns, profile.corIncludes2551Q),
       stellarTxId: ret.stellarReceipt?.stellarTxId ?? null,
+      penalties: ret.penalties
+        ? {
+            daysLate: ret.penalties.daysLate,
+            surcharge: ret.penalties.surcharge.toFixed(2),
+            interest: ret.penalties.interest.toFixed(2),
+            compromisePenalty: ret.penalties.compromisePenalty.toFixed(2),
+            totalPenalty: ret.penalties.totalPenalty.toFixed(2),
+          }
+        : null,
     }))
 
     const filedReturns = returns.filter((r) => r.status === 'FILED')
 
-    const attachments = [
-      {
-        name: 'Form 2307 Certificates (originals)',
-        status: taxYear.certificates.length > 0 ? 'Available' : 'Pending',
-      },
-      {
-        name: 'SAWT Alphalist',
-        status: taxYear.certificates.length > 0 ? 'Available' : 'Pending',
-      },
-      ...returns
-        .filter((r) => r.formType === 'FORM_2551Q')
-        .map((r) => ({
-          name: `2551Q Receipt — ${r.quarter ? `Q${r.quarter}` : 'Annual'}`,
-          status: r.status === 'FILED' ? 'Available' : 'Pending',
-        })),
-      ...returns
-        .filter((r) => r.formType === 'FORM_1701Q')
-        .map((r) => ({
-          name: `1701Q Receipt — ${r.quarter ? `Q${r.quarter}` : 'Annual'}`,
-          status: r.status === 'FILED' ? 'Available' : 'Pending',
-        })),
-      {
-        name: '1701A Annual Return Receipt',
-        status: returns.find((r) => r.formType === 'FORM_1701A')?.status === 'FILED' ? 'Available' : 'Pending',
-      },
-      {
-        name: 'Prior Year ITR (Carry Over)',
-        status: taxYear.priorYearCredit ? 'Available' : 'External',
-      },
-      {
-        name: 'Financial Statements',
-        status: taxYear.electedRate === 'RATE_8PCT' ? 'NOT REQUIRED' : 'External',
-      },
-    ]
+    const totalPenalty = returns.reduce(
+      (sum, r) => sum.plus(r.penalties?.totalPenalty ?? '0'),
+      new Decimal('0')
+    )
+
+    const attachments = buildAttachmentsChecklist({
+      certificates: taxYear.certificates,
+      returns: taxYear.returns.map((ret) => ({
+        id: ret.id,
+        formType: ret.formType,
+        quarter: ret.quarter,
+        sequenceOrder: ret.sequenceOrder,
+        status: ret.status,
+      })),
+      priorYearCredit: taxYear.priorYearCredit,
+      electedRate: taxYear.electedRate,
+      corIncludes2551Q: profile.corIncludes2551Q,
+    })
 
     return NextResponse.json({
       taxYear: taxYear.year,
+      taxpayer: {
+        fullName: profile.fullName,
+        tin: profile.tin,
+        rdoCode: profile.rdoCode,
+        registeredAddress: profile.registeredAddress,
+        zipCode: profile.zipCode,
+      },
+      electedRate: taxYear.electedRate,
       totalGross: totalGross.toFixed(2),
       totalCwt: totalCwt.toFixed(2),
+      totalPenalty: totalPenalty.toFixed(2),
       filedCount: filedReturns.length,
       totalCount: returns.length,
       returns,
