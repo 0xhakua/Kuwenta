@@ -35,6 +35,7 @@ model TaxpayerProfile {
   natureOfBusiness  String
   incomeType        IncomeType @default(PURE_SELF_EMPLOYMENT)
   corIncludes2551Q  Boolean    @default(true)
+  isNewRegistrant   Boolean    @default(false)  // elected 8% on Form 1901 at initial BIR registration
   atcCodes          TaxpayerATC[]
   taxYears          TaxYear[]
   createdAt         DateTime   @default(now())
