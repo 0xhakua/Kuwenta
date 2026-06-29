@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "decimal.js": "^10",
+    "exceljs": "^4.4.0",
     "jose": "^5",
     "jszip": "^3.10.1",
     "lucide-react": "^1.21.0",
