@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
+import { generatePriorYearCreditJournal } from '@/lib/journal/generator'
 
 const createSchema = z.object({
   amount: z.union([z.string(), z.number()]).transform((v) => String(v)),
@@ -114,6 +115,7 @@ export async function POST(req: Request) {
       })
 
       await recascadeTaxYear({ taxYearId: taxYear.id, tx })
+      await generatePriorYearCreditJournal(taxYear.id, created.id, tx)
 
       return created
     })

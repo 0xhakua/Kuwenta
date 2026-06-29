@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { formatPeso, formatDate } from '@/lib/format'
 
 type ReturnItem = {
   id: string
@@ -53,19 +54,6 @@ export default function ReturnsPage() {
       cancelled = true
     }
   }, [])
-
-  function formatPeso(value: string | null) {
-    if (value == null) return '₱0.00'
-    return `₱${Number(value).toLocaleString('en-PH', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`
-  }
-
-  function formatDate(value: string | null) {
-    if (!value) return '—'
-    return new Date(value).toLocaleDateString('en-PH')
-  }
 
   function statusColor(status: string) {
     switch (status) {

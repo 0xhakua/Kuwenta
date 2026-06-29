@@ -3,6 +3,7 @@ import Decimal from 'decimal.js'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
+import { generateOverpaymentJournal } from '@/lib/journal/generator'
 
 const dispositionSchema = z.object({
   disposition: z.enum(['CARRY_OVER', 'REFUND', 'TAX_CREDIT_CERTIFICATE']),
@@ -137,6 +138,8 @@ export async function POST(
         electedAt: new Date(),
       },
     })
+
+    await generateOverpaymentJournal(taxYear.id, overpayment.id)
 
     await prisma.auditLog.create({
       data: {

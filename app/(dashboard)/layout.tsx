@@ -32,6 +32,18 @@ export default async function DashboardLayout({
           <Link href="/returns">
             <Button variant="ghost" className="w-full justify-start">Returns</Button>
           </Link>
+          <Link href="/prior-year-credit">
+            <Button variant="ghost" className="w-full justify-start">Prior Year Credit</Button>
+          </Link>
+          <Link href="/sawt">
+            <Button variant="ghost" className="w-full justify-start">SAWT</Button>
+          </Link>
+          <Link href="/journal">
+            <Button variant="ghost" className="w-full justify-start">Journal</Button>
+          </Link>
+          <Link href="/stellar">
+            <Button variant="ghost" className="w-full justify-start">Stellar</Button>
+          </Link>
           {session.role === 'ADMIN' && (
             <Link href="/admin">
               <Button variant="ghost" className="w-full justify-start">Admin</Button>

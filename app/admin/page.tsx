@@ -5,6 +5,13 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
   Table,
   TableBody,
   TableCell,
@@ -66,13 +73,57 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold">Admin Panel</h1>
           <p className="text-muted-foreground">Manage taxpayers and system activity.</p>
         </div>
-        <Link href="/admin/audit-log">
-          <Button variant="outline">View Audit Log</Button>
-        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loading && <p className="text-muted-foreground">Loading users…</p>}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/admin/audit-log">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Audit Log</CardTitle>
+              <CardDescription>System activity trail</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm">View</Button>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/atc">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">ATC Codes</CardTitle>
+              <CardDescription>Withholding tax codes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm">Manage</Button>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/holidays">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Holidays</CardTitle>
+              <CardDescription>Deadline rolling calendar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm">Manage</Button>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/rdo-penalties">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">RDO Penalties</CardTitle>
+              <CardDescription>Compromise fees by RDO</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm">Manage</Button>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {!loading && users.length === 0 ? (
         <p className="text-muted-foreground">No users found.</p>

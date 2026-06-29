@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
+import { generateIncomeRecognitionJournal } from '@/lib/journal/generator'
 
 const certificateSchema = z.object({
   quarter: z.number().int().min(1).max(4).optional(),
@@ -102,6 +103,18 @@ export async function PUT(
     const discrepancy = cwtWithheld.minus(expectedCwt).abs()
     const cwtValidated = discrepancy.lessThanOrEqualTo(1)
 
+    const previousCertificateContext = {
+      id: existing.id,
+      quarter: existing.quarter,
+      payorName: existing.payorName,
+      payorTin: existing.payorTin,
+      atcCode: existing.atcCode,
+      quarterlyTotal: existing.quarterlyTotal,
+      cwtWithheld: existing.cwtWithheld,
+      createdAt: existing.createdAt,
+      updatedAt: existing.updatedAt,
+    }
+
     const certificate = await prisma.$transaction(async (tx) => {
       const updated = await tx.form2307.update({
         where: { id },
@@ -122,6 +135,13 @@ export async function PUT(
       })
 
       await recascadeTaxYear({ taxYearId: existing.taxYearId, tx })
+      await generateIncomeRecognitionJournal(
+        existing.taxYearId,
+        id,
+        '2307_AMENDED',
+        previousCertificateContext,
+        tx
+      )
 
       return updated
     })
@@ -150,6 +170,13 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
+      await generateIncomeRecognitionJournal(
+        existing.taxYearId,
+        id,
+        '2307_DELETED',
+        undefined,
+        tx
+      )
       await tx.form2307.delete({ where: { id } })
       await recascadeTaxYear({ taxYearId: existing.taxYearId, tx })
     })

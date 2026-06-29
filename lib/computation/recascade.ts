@@ -5,6 +5,13 @@ import { computeAnnualIncomeTax, computeQuarterlyIncomeTax } from './income-tax'
 import { computePercentageTax } from './percentage-tax'
 import { computePenalties, computeDaysLate } from './penalties'
 import type { IncomeTypeValue } from './constants'
+import {
+  aggregateByQuarter,
+  sumUpToQuarter,
+  sumCwtUpToQuarter,
+  sumFullYear,
+  sumFullYearCwt,
+} from './aggregate'
 
 type TransactionClient = Omit<
   PrismaClient,
@@ -75,6 +82,7 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
   // Graduated-rate computations are not yet implemented.
   const quarterKeys = [1, 2, 3] as const
   let priorQuartersTaxPaid = new Decimal('0')
+  let quarterlyPaymentsCash = new Decimal('0')
   const useEightPctComputation = electedRate !== 'GRADUATED'
 
   for (const q of quarterKeys) {
@@ -114,7 +122,11 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
 
     await recomputePenalty(ret.id, netTaxDue, taxYear.taxpayer.rdoCode, db)
 
-    priorQuartersTaxPaid = priorQuartersTaxPaid.plus(netTaxDue)
+    // For the next quarter's cumulative computation, add the full tax due
+    // (whether paid by cash or CWT). For the annual return, only cash paid
+    // counts as a quarterly payment credit.
+    priorQuartersTaxPaid = priorQuartersTaxPaid.plus(taxDue)
+    quarterlyPaymentsCash = quarterlyPaymentsCash.plus(netTaxDue)
   }
 
   // Recompute 1701A annual return
@@ -139,7 +151,7 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
       const { taxDue, totalCredits, netPosition } = computeAnnualIncomeTax(
         fullYearGross,
         priorYearCredit,
-        priorQuartersTaxPaid,
+        quarterlyPaymentsCash,
         cwtWithheld,
         incomeType
       )
@@ -157,50 +169,6 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
       await recomputePenalty(annualReturn.id, Decimal.max(netPosition, 0), taxYear.taxpayer.rdoCode, db)
     }
   }
-}
-
-function aggregateByQuarter(
-  certificates: Array<{ quarter: number; quarterlyTotal: Decimal.Value; cwtWithheld: Decimal.Value }>
-): Record<number, { gross: Decimal; cwt: Decimal }> {
-  const result: Record<number, { gross: Decimal; cwt: Decimal }> = {}
-  for (const cert of certificates) {
-    if (!result[cert.quarter]) {
-      result[cert.quarter] = { gross: new Decimal('0'), cwt: new Decimal('0') }
-    }
-    result[cert.quarter].gross = result[cert.quarter].gross.plus(cert.quarterlyTotal)
-    result[cert.quarter].cwt = result[cert.quarter].cwt.plus(cert.cwtWithheld)
-  }
-  return result
-}
-
-function sumUpToQuarter(
-  quarterly: Record<number, { gross: Decimal; cwt: Decimal }>,
-  quarter: number
-): Decimal {
-  let sum = new Decimal('0')
-  for (let q = 1; q <= quarter; q++) {
-    sum = sum.plus(quarterly[q]?.gross ?? 0)
-  }
-  return sum
-}
-
-function sumCwtUpToQuarter(
-  quarterly: Record<number, { gross: Decimal; cwt: Decimal }>,
-  quarter: number
-): Decimal {
-  let sum = new Decimal('0')
-  for (let q = 1; q <= quarter; q++) {
-    sum = sum.plus(quarterly[q]?.cwt ?? 0)
-  }
-  return sum
-}
-
-function sumFullYear(quarterly: Record<number, { gross: Decimal; cwt: Decimal }>): Decimal {
-  return sumUpToQuarter(quarterly, 4)
-}
-
-function sumFullYearCwt(quarterly: Record<number, { gross: Decimal; cwt: Decimal }>): Decimal {
-  return sumCwtUpToQuarter(quarterly, 4)
 }
 
 async function recomputePenalty(

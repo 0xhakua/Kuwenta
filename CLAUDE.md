@@ -47,7 +47,7 @@ There is no test runner configured yet. If you add tests, wire them through `pac
 ### Filing Model
 
 A `TaxpayerProfile` owns `TaxYear` records. Each tax year owns:
-
+  
 - `Form2307` certificates (income/CWT per quarter).
 - `TaxReturn` slots in the legally-mandated sequence:
   - 8-return path: 2551Q Q1–Q4, 1701Q Q1–Q3, 1701A.

@@ -5,6 +5,7 @@ import { determineReturnStatus } from '@/lib/computation/sequence'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
 import { renderFilingPdf } from '@/lib/pdf/dispatcher'
 import { anchorFilingReceipt, storeFilingPackage } from '@/lib/stellar/anchor'
+import { generateReturnFilingJournal } from '@/lib/journal/generator'
 
 export async function POST(
   _req: Request,
@@ -109,6 +110,8 @@ export async function POST(
           status: anchor.status,
         },
       })
+
+      await generateReturnFilingJournal(taxYear.id, refreshed.id, tx)
 
       await tx.auditLog.create({
         data: {

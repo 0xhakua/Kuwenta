@@ -76,6 +76,7 @@ model TaxYear {
   returns         TaxReturn[]
   priorYearCredit PriorYearCredit?
   overpayment     Overpayment?
+  journalEntries  JournalEntry[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -227,6 +228,34 @@ model PublicHoliday {
   date    DateTime  @db.Date
   name    String
   year    Int
+}
+
+model JournalEntry {
+  id              String        @id @default(cuid())
+  taxYearId       String
+  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id], onDelete: Cascade)
+  entryNumber     String        // e.g. "9.1", "9.2"
+  subsection      String        // "9A" through "9G"
+  triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
+  triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  entryDate       DateTime
+  lines           JournalLine[]
+  regulationRef   String?       // e.g. "RR No. 8-2018"
+  workflowMenu    String?       // e.g. "Income > Add 2307"
+  isMemo          Boolean       @default(false)  // true = no cash movement, informational only
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model JournalLine {
+  id              String        @id @default(cuid())
+  entryId         String
+  entry           JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  lineOrder       Int
+  accountCode     String
+  accountName     String        // e.g. "CWT Receivable", "Service Income"
+  debit           Decimal?      @db.Decimal(15, 2)
+  credit          Decimal?      @db.Decimal(15, 2)
 }
 
 model AuditLog {

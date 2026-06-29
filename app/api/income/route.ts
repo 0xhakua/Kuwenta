@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
+import { generateIncomeRecognitionJournal } from '@/lib/journal/generator'
 
 const certificateSchema = z.object({
   quarter: z.number().int().min(1).max(4),
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
       })
 
       await recascadeTaxYear({ taxYearId: taxYear.id, tx })
+      await generateIncomeRecognitionJournal(taxYear.id, created.id, '2307_ADDED', undefined, tx)
 
       return created
     })
