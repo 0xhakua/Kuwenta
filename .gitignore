@@ -39,6 +39,9 @@ yarn-error.log*
 postgres_data/
 minio_data/
 
+# claude worktrees
+.claude/
+
 # vercel
 .vercel
 
