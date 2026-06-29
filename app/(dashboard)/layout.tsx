@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Bell, Layers, Link2 } from 'lucide-react'
 import { getSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
+import { SidebarNav } from './_components/sidebar-nav'
 
 export default async function DashboardLayout({
   children,
@@ -14,44 +16,62 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-64 border-r bg-muted/40 p-4 hidden md:block">
-        <nav className="space-y-2">
-          <Link href="/dashboard">
-            <Button variant="ghost" className="w-full justify-start">Dashboard</Button>
-          </Link>
-          <Link href="/onboarding">
-            <Button variant="ghost" className="w-full justify-start">Onboarding</Button>
-          </Link>
-          <Link href="/income">
-            <Button variant="ghost" className="w-full justify-start">Income</Button>
-          </Link>
-          <Link href="/election">
-            <Button variant="ghost" className="w-full justify-start">Election</Button>
-          </Link>
-          <Link href="/returns">
-            <Button variant="ghost" className="w-full justify-start">Returns</Button>
-          </Link>
-          <Link href="/prior-year-credit">
-            <Button variant="ghost" className="w-full justify-start">Prior Year Credit</Button>
-          </Link>
-          <Link href="/sawt">
-            <Button variant="ghost" className="w-full justify-start">SAWT</Button>
-          </Link>
-          <Link href="/journal">
-            <Button variant="ghost" className="w-full justify-start">Journal</Button>
-          </Link>
-          <Link href="/stellar">
-            <Button variant="ghost" className="w-full justify-start">Stellar</Button>
-          </Link>
-          {session.role === 'ADMIN' && (
-            <Link href="/admin">
-              <Button variant="ghost" className="w-full justify-start">Admin</Button>
-            </Link>
-          )}
-        </nav>
+    <div className="min-h-screen flex bg-background text-foreground">
+      {/* Branded sidebar (BRAND.md §6) */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4">
+        <div className="mb-6 flex items-center gap-3 px-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Layers className="size-5" />
+          </div>
+          <div className="leading-tight">
+            <div className="font-heading text-lg font-black text-foreground">Krunchr</div>
+            <div className="text-xs font-medium text-muted-foreground">Compliance Engine</div>
+          </div>
+        </div>
+
+        <Link href="/income" className="mb-6 block">
+          <Button className="w-full">Start New Filing</Button>
+        </Link>
+
+        <SidebarNav isAdmin={session.role === 'ADMIN'} />
+
+        <div className="mt-auto flex items-center justify-between rounded-lg border border-sidebar-border bg-card px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">Stellar Network</span>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <span className="size-2 rounded-full bg-primary" />
+            Active
+          </span>
+        </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+
+      {/* Content column */}
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-4 md:px-10">
+          <span className="font-heading text-xl font-bold text-foreground md:hidden">Krunchr</span>
+          <div className="ml-auto flex items-center gap-4">
+            <div className="hidden items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 sm:flex">
+              <Link2 className="size-4 text-primary" />
+              <span className="text-xs font-semibold text-muted-foreground">
+                Blockchain Status: Secured
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-label="Notifications"
+              className="text-muted-foreground transition-colors hover:text-primary"
+            >
+              <Bell className="size-5" />
+            </button>
+            <div className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
+              {session.username?.[0]?.toUpperCase() ?? 'U'}
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 px-4 py-6 md:px-10 md:py-8">
+          <div className="mx-auto w-full max-w-[1280px]">{children}</div>
+        </main>
+      </div>
     </div>
   )
 }

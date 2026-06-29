@@ -2,142 +2,180 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * Map design tokens -> Tailwind utilities (Tailwind v4 @theme).
+ * Without this block, classes like `bg-primary` / `font-heading` emit no CSS.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 @layer base {
-  .theme {
-
-    --font-heading: var(--font-sans);
-
-    --font-sans: var(--font-sans)
-  }
+  /*
+   * Krunchr design tokens — see BRAND.md. Derived from ui-mock.html.
+   * Style with these semantic tokens; never hardcode hex/palette colors in pages.
+   */
   :root {
+    /* Canvas & surfaces */
+    --background: #f8f9ff;
+    --foreground: #0b1c30;
+    --card: #ffffff;
+    --card-foreground: #0b1c30;
+    --popover: #ffffff;
+    --popover-foreground: #0b1c30;
 
-    --background: oklch(1 0 0);
+    /* Primary action = teal CTA */
+    --primary: #0d9488;
+    --primary-foreground: #ffffff;
 
-    --foreground: oklch(0.145 0 0);
+    /* Neutral/quiet surfaces */
+    --secondary: #eff4ff;
+    --secondary-foreground: #0b1c30;
+    --muted: #eff4ff;
+    --muted-foreground: #45464d;
 
-    --card: oklch(1 0 0);
+    /* Teal-tinted active/hover (nav, highlights) */
+    --accent: #86f2e4;
+    --accent-foreground: #006f66;
 
-    --card-foreground: oklch(0.145 0 0);
+    /* Error / overdue */
+    --destructive: #ba1a1a;
+    --destructive-foreground: #ffffff;
 
-    --popover: oklch(1 0 0);
+    /* Lines & focus */
+    --border: #e2e8f0;
+    --input: #cbd5e1;
+    --ring: #0d9488;
 
-    --popover-foreground: oklch(0.145 0 0);
+    /* Charts: teal, mint, blue, navy, slate */
+    --chart-1: #0d9488;
+    --chart-2: #4edea3;
+    --chart-3: #3b82f6;
+    --chart-4: #0b1c30;
+    --chart-5: #64748b;
 
-    --primary: oklch(0.205 0 0);
+    --radius: 0.5rem;
 
-    --primary-foreground: oklch(0.985 0 0);
+    /* App-shell nav */
+    --sidebar: #eff4ff;
+    --sidebar-foreground: #45464d;
+    --sidebar-primary: #0d9488;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #86f2e4;
+    --sidebar-accent-foreground: #006f66;
+    --sidebar-border: #c6c6cd;
+    --sidebar-ring: #0d9488;
 
-    --secondary: oklch(0.97 0 0);
-
-    --secondary-foreground: oklch(0.205 0 0);
-
-    --muted: oklch(0.97 0 0);
-
-    --muted-foreground: oklch(0.556 0 0);
-
-    --accent: oklch(0.97 0 0);
-
-    --accent-foreground: oklch(0.205 0 0);
-
-    --destructive: oklch(0.577 0.245 27.325);
-
-    --border: oklch(0.922 0 0);
-
-    --input: oklch(0.922 0 0);
-
-    --ring: oklch(0.708 0 0);
-
-    --chart-1: oklch(0.87 0 0);
-
-    --chart-2: oklch(0.556 0 0);
-
-    --chart-3: oklch(0.439 0 0);
-
-    --chart-4: oklch(0.371 0 0);
-
-    --chart-5: oklch(0.269 0 0);
-
-    --radius: 0.625rem;
-
-    --sidebar: oklch(0.985 0 0);
-
-    --sidebar-foreground: oklch(0.145 0 0);
-
-    --sidebar-primary: oklch(0.205 0 0);
-
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-
-    --sidebar-accent: oklch(0.97 0 0);
-
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-
-    --sidebar-border: oklch(0.922 0 0);
-
-    --sidebar-ring: oklch(0.708 0 0)
+    /* Brand status intents (see .status-* utilities) */
+    --success: #009668;
+    --success-foreground: #00382a;
+    --success-muted: #d7f8ec;
+    --warning: #9a6700;
+    --warning-foreground: #5a3d00;
+    --warning-muted: #fdedcf;
+    --info: #1d4ed8;
+    --info-foreground: #11328c;
+    --info-muted: #dbe7ff;
   }
   .dark {
+    --background: #0b1c30;
+    --foreground: #eaf1ff;
+    --card: #131b2e;
+    --card-foreground: #eaf1ff;
+    --popover: #131b2e;
+    --popover-foreground: #eaf1ff;
 
-    --background: oklch(0.145 0 0);
+    --primary: #2dd4bf;
+    --primary-foreground: #00201d;
 
-    --foreground: oklch(0.985 0 0);
+    --secondary: #213145;
+    --secondary-foreground: #eaf1ff;
+    --muted: #213145;
+    --muted-foreground: #bec6e0;
 
-    --card: oklch(0.205 0 0);
+    --accent: #006f66;
+    --accent-foreground: #86f2e4;
 
-    --card-foreground: oklch(0.985 0 0);
+    --destructive: #ffb4ab;
+    --destructive-foreground: #0b1c30;
 
-    --popover: oklch(0.205 0 0);
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 16%);
+    --ring: #2dd4bf;
 
-    --popover-foreground: oklch(0.985 0 0);
+    --chart-1: #2dd4bf;
+    --chart-2: #6ffbbe;
+    --chart-3: #60a5fa;
+    --chart-4: #bec6e0;
+    --chart-5: #94a3b8;
 
-    --primary: oklch(0.922 0 0);
+    --sidebar: #131b2e;
+    --sidebar-foreground: #bec6e0;
+    --sidebar-primary: #2dd4bf;
+    --sidebar-primary-foreground: #00201d;
+    --sidebar-accent: #006f66;
+    --sidebar-accent-foreground: #86f2e4;
+    --sidebar-border: oklch(1 0 0 / 12%);
+    --sidebar-ring: #2dd4bf;
 
-    --primary-foreground: oklch(0.205 0 0);
-
-    --secondary: oklch(0.269 0 0);
-
-    --secondary-foreground: oklch(0.985 0 0);
-
-    --muted: oklch(0.269 0 0);
-
-    --muted-foreground: oklch(0.708 0 0);
-
-    --accent: oklch(0.269 0 0);
-
-    --accent-foreground: oklch(0.985 0 0);
-
-    --destructive: oklch(0.704 0.191 22.216);
-
-    --border: oklch(1 0 0 / 10%);
-
-    --input: oklch(1 0 0 / 15%);
-
-    --ring: oklch(0.556 0 0);
-
-    --chart-1: oklch(0.87 0 0);
-
-    --chart-2: oklch(0.556 0 0);
-
-    --chart-3: oklch(0.439 0 0);
-
-    --chart-4: oklch(0.371 0 0);
-
-    --chart-5: oklch(0.269 0 0);
-
-    --sidebar: oklch(0.205 0 0);
-
-    --sidebar-foreground: oklch(0.985 0 0);
-
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-
-    --sidebar-accent: oklch(0.269 0 0);
-
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-
-    --sidebar-border: oklch(1 0 0 / 10%);
-
-    --sidebar-ring: oklch(0.556 0 0)
+    --success: #4edea3;
+    --success-foreground: #00201d;
+    --success-muted: rgba(78, 222, 163, 0.16);
+    --warning: #fbbf24;
+    --warning-foreground: #0b1c30;
+    --warning-muted: rgba(251, 191, 36, 0.16);
+    --info: #60a5fa;
+    --info-foreground: #0b1c30;
+    --info-muted: rgba(96, 165, 250, 0.16);
   }
   * {
     border-color: var(--border);
@@ -149,5 +187,46 @@
   }
   html {
     font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  /* Card/panel elevation — flat + 1px border + soft ambient shadow (BRAND.md §5). */
+  .shadow-ambient {
+    box-shadow:
+      0px 4px 6px -1px rgba(15, 23, 42, 0.1),
+      0px 2px 4px -2px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Frosted surface for overlays/hero accents. */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  /* Dropzone drag-over state (BRAND.md §7). */
+  .drag-active {
+    border-color: var(--primary) !important;
+    background-color: color-mix(in oklab, var(--primary) 8%, transparent) !important;
+  }
+
+  /* Status intents — use instead of ad-hoc bg-green-100/text-green-800 etc. */
+  .status-success {
+    color: var(--success);
+    background-color: var(--success-muted);
+  }
+  .status-warning {
+    color: var(--warning);
+    background-color: var(--warning-muted);
+  }
+  .status-danger {
+    color: var(--destructive);
+    background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
+  }
+  .status-info {
+    color: var(--info);
+    background-color: var(--info-muted);
   }
 }

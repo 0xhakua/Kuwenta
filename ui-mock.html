@@ -1,0 +1,1231 @@
+<!-- Design System -->
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Krunchr Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#0b1c30",
+                      "primary-fixed-dim": "#bec6e0",
+                      "surface-container-low": "#eff4ff",
+                      "on-surface": "#0b1c30",
+                      "on-secondary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#00201d",
+                      "on-surface-variant": "#45464d",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed-variant": "#005049",
+                      "surface": "#f8f9ff",
+                      "tertiary-fixed": "#6ffbbe",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#c6c6cd",
+                      "on-secondary-container": "#006f66",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed-variant": "#005236",
+                      "on-tertiary-container": "#009668",
+                      "surface-container": "#e5eeff",
+                      "on-error": "#ffffff",
+                      "surface-container-high": "#dce9ff",
+                      "inverse-surface": "#213145",
+                      "secondary": "#006a61",
+                      "secondary-fixed-dim": "#6bd8cb",
+                      "on-error-container": "#93000a",
+                      "on-primary": "#ffffff",
+                      "outline": "#76777d",
+                      "primary": "#000000",
+                      "surface-bright": "#f8f9ff",
+                      "primary-fixed": "#dae2fd",
+                      "surface-tint": "#565e74",
+                      "on-tertiary-fixed": "#002113",
+                      "surface-container-highest": "#d3e4fe",
+                      "surface-dim": "#cbdbf5",
+                      "inverse-on-surface": "#eaf1ff",
+                      "on-primary-fixed": "#131b2e",
+                      "secondary-container": "#86f2e4",
+                      "tertiary-container": "#002113",
+                      "inverse-primary": "#bec6e0",
+                      "on-primary-container": "#7c839b",
+                      "primary-container": "#131b2e",
+                      "tertiary-fixed-dim": "#4edea3",
+                      "background": "#f8f9ff",
+                      "surface-variant": "#d3e4fe",
+                      "secondary-fixed": "#89f5e7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "base": "8px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Public Sans"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Public Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Public Sans"
+                      ],
+                      "headline-xl": [
+                              "Public Sans"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .bento-large {
+            grid-column: span 2;
+        }
+        @media (max-width: 768px) {
+            .bento-large {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex font-body-md text-body-md">
+<!-- SideNavBar -->
+<nav class="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex-col p-4 border-r border-outline-variant bg-surface-container-low z-40">
+<div class="mb-8 px-4">
+<h1 class="font-headline-sm text-headline-sm font-black text-on-surface">Compliance Engine</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Stellar Network Active</p>
+</div>
+<button class="w-full bg-[#0D9488] text-white py-3 px-4 rounded-lg font-label-md text-label-md mb-8 hover:bg-opacity-90 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            Start New Filing
+        </button>
+<div class="flex-1 space-y-2">
+<!-- Active: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">upload_file</span>
+<span class="font-label-md text-label-md">Form 2307 Upload</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">calculate</span>
+<span class="font-label-md text-label-md">Tax Position</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-label-md text-label-md">Returns Sequence</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-label-md text-label-md">Filing History</span>
+</a>
+</div>
+<div class="mt-auto space-y-2 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<!-- Mobile Menu Toggle (Placeholder) -->
+<button class="md:hidden text-on-surface p-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Krunchr</h1>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<div class="flex items-center gap-2 bg-[#F1F5F9] px-3 py-1.5 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">link</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Blockchain Status: Secured</span>
+</div>
+<button class="text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined">history_edu</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-variant border border-outline-variant">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A professional headshot of a smiling young Filipino freelancer in a minimalist home office setting. The lighting is bright and natural, reflecting a clean, modern aesthetic with soft shadows. The overall tone is approachable yet professional, matching a corporate modern design style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1zx3PF5al290D4qoRS_cDCqWmirdPHsYIgBy3viLWIMKrXLtxLw5_oI7I31mzotsz4Xlhjzl6p7ja29iAEM1U0JfsnWMJvlL8kMN4hjsXDEJZAJmCPvwfwESBcydSvbWVTun87C35jktw6ZvOe4qogwAu298-OdpK3Zvc2mjetKNVlpNlswt5ju8gfD51d-ay3pcbjylsNWQL8AB_gpvo3SBUNDVL9eCMUJBRXlLtx13Soj_giLpZQs1wkLZ_ThyunLR81Mixcg8"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full pt-20 pb-8 px-margin-mobile md:px-margin-desktop md:ml-64 max-w-container-max mx-auto">
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-background mb-2">Overview</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Welcome back. Your compliance engine is running smoothly.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-[#F8FAFC] border border-[#64748B] text-[#64748B] px-6 py-2.5 rounded-lg font-label-md text-label-md hover:bg-surface-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined">upload</span>
+                    Upload Form 2307
+                </button>
+<button class="bg-[#0D9488] text-white px-6 py-2.5 rounded-lg font-label-md text-label-md hover:bg-opacity-90 transition-colors shadow-sm">
+                    Start New Filing
+                </button>
+</div>
+</div>
+<div class="bento-grid">
+<!-- Tax Status (Bento Large) -->
+<div class="bento-large bg-surface-container-lowest rounded-xl p-6 border border-[#E2E8F0] shadow-sm relative overflow-hidden group">
+<!-- Subtle background decorative element -->
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-secondary opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity"></div>
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Current Tax Status</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Q3 2023 Assessment</p>
+</div>
+<div class="bg-tertiary-fixed-dim/20 text-[#006f66] px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm">Compliant</span>
+</div>
+</div>
+<div class="flex items-center gap-8 mb-6">
+<div class="w-24 h-24 rounded-full border-4 border-tertiary-fixed-dim flex items-center justify-center bg-surface relative">
+<span class="font-headline-lg text-headline-lg text-secondary">100%</span>
+<!-- Pseudo-progress ring -->
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="transparent" r="45" stroke="#E2E8F0" stroke-width="4"></circle>
+<circle cx="50" cy="50" fill="transparent" r="45" stroke="#4edea3" stroke-dasharray="283" stroke-dashoffset="0" stroke-width="4"></circle>
+</svg>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">All scheduled filings for the current quarter have been successfully processed and verified.</p>
+<a class="font-label-md text-label-md text-secondary hover:underline flex items-center gap-1" href="#">
+                            View Detailed Tax Position
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Next Deadline -->
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-error">event</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Next Deadline</h3>
+</div>
+<p class="font-headline-lg text-headline-lg text-error mb-1">Nov 15</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Q3 Income Tax (1701Q)</p>
+</div>
+<div class="mt-6 pt-4 border-t border-outline-variant/30 flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">12 Days Remaining</span>
+<button class="text-secondary font-label-sm text-label-sm hover:underline">Prepare Now</button>
+</div>
+</div>
+<!-- Recent Filings List -->
+<div class="bento-large bg-surface-container-lowest rounded-xl p-6 border border-[#E2E8F0] shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Filings</h3>
+<button class="text-on-surface-variant hover:text-secondary font-label-sm text-label-sm flex items-center gap-1">
+                        View All <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+<div class="space-y-4">
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-4 bg-surface hover:bg-surface-container-low transition-colors rounded-lg border border-transparent hover:border-[#E2E8F0]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-secondary-container text-on-secondary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Q2 Percentage Tax</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Form 2551Q • Filed Aug 20, 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md text-on-surface">₱ 4,250.00</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid via GCash</p>
+</div>
+<div class="bg-[#F1F5F9] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#E2E8F0]">
+<span class="material-symbols-outlined text-secondary text-xs" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-label-sm text-[#0f172a] text-[10px]">Stellar Verified</span>
+</div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-4 bg-surface hover:bg-surface-container-low transition-colors rounded-lg border border-transparent hover:border-[#E2E8F0]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-secondary-container text-on-secondary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Q2 Income Tax</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Form 1701Q • Filed Aug 12, 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md text-on-surface">₱ 12,500.00</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid via Bank Transfer</p>
+</div>
+<div class="bg-[#F1F5F9] px-2.5 py-1 rounded-full flex items-center gap-1 border border-[#E2E8F0]">
+<span class="material-symbols-outlined text-secondary text-xs" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-label-sm text-[#0f172a] text-[10px]">Stellar Verified</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
+
+<!-- Dashboard -->
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Krunchr - Form 2307 Upload</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-background": "#0b1c30",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#eff4ff",
+                        "on-surface": "#0b1c30",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#00201d",
+                        "on-surface-variant": "#45464d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface": "#f8f9ff",
+                        "tertiary-fixed": "#6ffbbe",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-secondary-container": "#006f66",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-tertiary-container": "#009668",
+                        "surface-container": "#e5eeff",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dce9ff",
+                        "inverse-surface": "#213145",
+                        "secondary": "#006a61",
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "outline": "#76777d",
+                        "primary": "#000000",
+                        "surface-bright": "#f8f9ff",
+                        "primary-fixed": "#dae2fd",
+                        "surface-tint": "#565e74",
+                        "on-tertiary-fixed": "#002113",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-primary-fixed": "#131b2e",
+                        "secondary-container": "#86f2e4",
+                        "tertiary-container": "#002113",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary-container": "#7c839b",
+                        "primary-container": "#131b2e",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "background": "#f8f9ff",
+                        "surface-variant": "#d3e4fe",
+                        "secondary-fixed": "#89f5e7"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "container-max": "1280px",
+                        base: "8px",
+                        gutter: "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Public Sans"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Public Sans"],
+                        "headline-lg-mobile": ["Public Sans"],
+                        "headline-xl": ["Public Sans"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "label-md": ["14px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "headline-xl": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .ambient-shadow {
+            box-shadow: 0px 4px 6px -1px rgba(15, 23, 42, 0.1), 0px 2px 4px -2px rgba(15, 23, 42, 0.05);
+        }
+        .drag-active {
+            border-color: #006a61 !important; /* using secondary theme color */
+            background-color: #eaf1ff !important; /* inverse-on-surface */
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface border-b border-outline-variant flat no shadows">
+<div class="flex items-center gap-4">
+<span class="text-headline-md font-headline-md font-bold text-on-surface">Krunchr</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-secondary" style="font-size: 16px;">link</span>
+<span class="font-label-sm text-label-sm text-on-surface">Blockchain Status: Secured</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-secondary transition-colors opacity-80 hover:opacity-100 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-secondary transition-colors opacity-80 hover:opacity-100 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+</button>
+<img alt="User profile photo" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a young adult looking forward with a slight smile, illuminated by soft studio lighting against a clean, light grey background. The mood is approachable and professional, fitting a corporate environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvN4SJVmt1Wvu5szx6HobYDStjtyTSdo63dC1-putIHxgmM30_6x-NODJ3vS8aSqlK0Ux8o3jICy9Eu69ZRWj_YQMjf1-RKDH8HrydBC1rdAPJK5D5cq5xprBGYeUBrI0u7VlEOiKfdwsKvh6RKiiVA0hwFLe1J1zMTLNLWuC8mHeVVbiAti2J77uWPK86grNde2H5PfBOhlR6Z6RP4FvZv0-OiPQ5dEJXc9O6jcB-lg7-JVbH8rFH9xSIePAY4totrq2xc2zATws"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex-col p-4 border-r border-outline-variant bg-surface-container-low flat no shadows z-40">
+<div class="mb-8 px-4">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" style="font-size: 20px;">layers</span>
+</div>
+<div>
+<h2 class="font-label-md text-label-md font-bold text-on-surface">Compliance Engine</h2>
+<p class="font-label-sm text-label-sm text-secondary">Stellar Network Active</p>
+</div>
+</div>
+<button class="w-full mt-4 bg-secondary text-on-secondary font-label-md text-label-md py-2 rounded-lg hover:opacity-90 transition-opacity">Start New Filing</button>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+<span class="font-label-md text-label-md">Form 2307 Upload</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="calculate">calculate</span>
+<span class="font-label-md text-label-md">Tax Position</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-md text-label-md">Returns Sequence</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="font-label-md text-label-md">Filing History</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 md:ml-64 p-margin-mobile md:p-margin-desktop w-full max-w-[1440px] mx-auto">
+<header class="mb-8">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-2">Form 2307 Upload</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Upload your certificates of creditable tax withheld at source. Our engine will automatically extract and verify the data.</p>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Uploader & Processing List -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<!-- Uploader Component -->
+<div class="border-2 border-dashed border-outline-variant rounded-xl bg-surface-container-lowest p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-surface-container-low" id="drop-zone">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="cloud_upload" style="font-size: 32px;">cloud_upload</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Drag &amp; Drop Certificates</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">or click to browse your files. Supported formats: PDF, JPG, PNG (Max 10MB per file).</p>
+<button class="bg-surface-container text-on-surface font-label-md text-label-md px-6 py-2.5 rounded-lg border border-outline-variant hover:bg-surface-container-high transition-colors">
+                        Select Files
+                    </button>
+<input accept=".pdf,.jpg,.jpeg,.png" class="hidden" id="file-input" multiple="" type="file"/>
+</div>
+<!-- Processing List -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl ambient-shadow overflow-hidden mt-4">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-label-md text-label-md font-bold text-on-surface">Extraction Queue</h3>
+<span class="bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm px-2.5 py-1 rounded-full">3 Files Processing</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium">Document / Payor Name</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">Income Amount</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">Tax Withheld</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-center">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant bg-surface-container-lowest">
+<!-- Row 1: Completed -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline" data-icon="description">description</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface">TechCorp Solutions Inc.</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Q3_2023_Cert.pdf</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-right font-body-md text-body-md text-on-surface">₱ 150,000.00</td>
+<td class="px-6 py-4 text-right font-body-md text-body-md text-on-surface font-medium">₱ 15,000.00</td>
+<td class="px-6 py-4 text-center">
+<div class="inline-flex items-center gap-1.5 bg-tertiary-fixed-dim bg-opacity-20 text-on-tertiary-container px-2.5 py-1 rounded-full">
+<span class="material-symbols-outlined" data-icon="check_circle" style="font-size: 14px;">check_circle</span>
+<span class="font-label-sm text-label-sm">Verified</span>
+</div>
+</td>
+</tr>
+<!-- Row 2: Processing -->
+<tr class="hover:bg-surface transition-colors bg-surface-bright">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="document_scanner">document_scanner</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface text-opacity-50 italic">Extracting Payor...</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">scan_001.jpg</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="h-4 bg-outline-variant bg-opacity-30 rounded w-24 ml-auto animate-pulse"></div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="h-4 bg-outline-variant bg-opacity-30 rounded w-20 ml-auto animate-pulse"></div>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="inline-flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined animate-spin" data-icon="sync" style="font-size: 16px;">sync</span>
+<span class="font-label-sm text-label-sm">Scanning</span>
+</div>
+</td>
+</tr>
+<!-- Row 3: Processing -->
+<tr class="hover:bg-surface transition-colors bg-surface-bright">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="document_scanner">document_scanner</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface text-opacity-50 italic">Extracting Payor...</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">scan_002.jpg</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="h-4 bg-outline-variant bg-opacity-30 rounded w-24 ml-auto animate-pulse"></div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="h-4 bg-outline-variant bg-opacity-30 rounded w-20 ml-auto animate-pulse"></div>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="inline-flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined animate-spin" data-icon="sync" style="font-size: 16px;">sync</span>
+<span class="font-label-sm text-label-sm">Scanning</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column: Summary Card -->
+<div class="lg:col-span-4">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl ambient-shadow p-6 lg:sticky lg:top-24">
+<h2 class="font-label-md text-label-md font-bold text-on-surface-variant mb-6 uppercase tracking-wider">Session Summary</h2>
+<div class="mb-8">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Total Credits Found</p>
+<h3 class="font-headline-xl text-headline-xl text-secondary">₱ 15,000<span class="text-headline-md text-on-surface-variant">.00</span></h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="lock" style="font-size: 14px;">lock</span>
+                            1 certificate verified on ledger
+                        </p>
+</div>
+<div class="space-y-4 border-t border-outline-variant pt-6">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface">Valid Certificates</span>
+<span class="font-label-md text-label-md text-on-surface font-bold">1</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Processing</span>
+<span class="font-label-md text-label-md text-on-surface-variant">2</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Failed / Needs Review</span>
+<span class="font-label-md text-label-md text-error">0</span>
+</div>
+</div>
+<button class="w-full mt-8 bg-secondary text-on-secondary font-label-md text-label-md py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2" disabled="">
+<span>Apply Credits to Tax Position</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward" style="font-size: 18px;">arrow_forward</span>
+</button>
+<p class="text-center font-label-sm text-label-sm text-on-surface-variant mt-3">Action available when processing completes.</p>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple drag and drop visual feedback
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('drag-active');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('drag-active');
+        }
+    </script>
+</body></html>
+
+<!-- Form 2307 Upload -->
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tax Position &amp; Return Sequence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#0b1c30",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#eff4ff",
+                        "on-surface": "#0b1c30",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#00201d",
+                        "on-surface-variant": "#45464d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface": "#f8f9ff",
+                        "tertiary-fixed": "#6ffbbe",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-secondary-container": "#006f66",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-tertiary-container": "#009668",
+                        "surface-container": "#e5eeff",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dce9ff",
+                        "inverse-surface": "#213145",
+                        "secondary": "#006a61",
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "outline": "#76777d",
+                        "primary": "#000000",
+                        "surface-bright": "#f8f9ff",
+                        "primary-fixed": "#dae2fd",
+                        "surface-tint": "#565e74",
+                        "on-tertiary-fixed": "#002113",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-primary-fixed": "#131b2e",
+                        "secondary-container": "#86f2e4",
+                        "tertiary-container": "#002113",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary-container": "#7c839b",
+                        "primary-container": "#131b2e",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "background": "#f8f9ff",
+                        "surface-variant": "#d3e4fe",
+                        "secondary-fixed": "#89f5e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Public Sans"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Public Sans"],
+                        "headline-lg-mobile": ["Public Sans"],
+                        "headline-xl": ["Public Sans"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Ambient Shadow from Design System */
+        .shadow-ambient {
+            box-shadow: 0px 4px 6px -1px rgba(15, 23, 42, 0.1), 0px 2px 4px -2px rgba(15, 23, 42, 0.05);
+        }
+        
+        /* Progress Line for Vertical Stepper */
+        .progress-line {
+            width: 2px;
+            background-color: #E2E8F0;
+            position: absolute;
+            left: 15px; /* Center with 32px circular nodes */
+            top: 32px;
+            bottom: -8px;
+            z-index: 0;
+        }
+        .step-node {
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md text-body-md flex md:flex-row flex-col">
+<!-- Mobile Top Navigation (Visible only on md:hidden) -->
+<nav class="md:hidden fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-outline">
+<div class="font-headline-md text-headline-md font-bold text-on-surface dark:text-surface-bright">Krunchr</div>
+<div class="flex items-center gap-4 text-secondary dark:text-secondary-fixed">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<img alt="User profile photo" class="w-8 h-8 rounded-full object-cover" data-alt="A small circular profile picture of a young professional in a light, modern corporate setting, exuding efficiency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC08vb2yAZFSePXojAKQOZ0a6AXSw7-TyzeuLIuKd8PAabYD9ZSEQMYvDDKqwXHYRjhdtrD8ZmeT7fmalJ7MtZFcCAmnxyGG6hIAEj7rEDhUBd4XqzSbNuumEtngzG9VeLm30CL2nmacG7nsMBtsxyvYD-aJiObup6iy32VM7Gchs7ZFzbzOwF4k49mIkmBZ0Hs4NjeSCjSFZXX3xv6Wkq2j-LbbXojlcEpZ4m1-mFlt48ZGArOSNWqVvaxq_pBFbsoKrzocsYnNCc"/>
+</div>
+</nav>
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col p-4 bg-surface-container-low dark:bg-primary-container border-r border-outline-variant dark:border-outline z-40">
+<div class="mb-8 flex items-center gap-3">
+<img alt="Krunchr Logo" class="w-10 h-10 rounded-lg object-cover" data-alt="A sleek, minimalist logo mark for a financial or tax compliance software company, featuring sharp geometric lines in teal and slate blue." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuVZr92lHi_WqNPOmwH8KvpJsR5FYJjSsmm9uH2GQ-MhjV-ydoSemVDFUr44vBkoiAYPCBT35TbpbEcK1z7Trnc0a8sYmIMGTMUYELr3KcDu_rw9T_ctxYBdwG3ebA6lWxGHVI8INF3QpNROT5ms5fo2XIyCWqUifk9N7DWuFtyHY5ZyTMMGgvcmmiIzZKwQQ2p5K86GbClhUeA1298dV4b56KbZisfGMxnHGKq6HDWExFpklwBJmY8oLO7vfmSB-4rG8Csa8Sd-c"/>
+<div>
+<div class="font-headline-sm text-headline-sm font-black text-on-surface">Krunchr</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Compliance Engine</div>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-highest dark:hover:bg-on-primary-fixed-variant transition-colors font-label-md text-label-md rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-highest dark:hover:bg-on-primary-fixed-variant transition-colors font-label-md text-label-md rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+                Form 2307 Upload
+            </a>
+<!-- ACTIVE TAB -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-bold font-label-md text-label-md transition-transform duration-150 scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="calculate" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calculate</span>
+                Tax Position
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-highest dark:hover:bg-on-primary-fixed-variant transition-colors font-label-md text-label-md rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                Returns Sequence
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-highest dark:hover:bg-on-primary-fixed-variant transition-colors font-label-md text-label-md rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+                Filing History
+            </a>
+</nav>
+<div class="mt-auto space-y-2">
+<div class="bg-surface-container-lowest border border-outline-variant p-3 rounded-lg flex items-center justify-between mb-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Stellar Network Active</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<button class="w-full py-2 bg-secondary text-on-secondary font-label-md text-label-md rounded-lg hover:bg-secondary-fixed-dim transition-colors">
+                Start New Filing
+            </button>
+<div class="pt-4 border-t border-outline-variant flex justify-around">
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined" data-icon="settings">settings</span></a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined" data-icon="help">help</span></a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 pt-16 md:pt-0 p-margin-mobile md:p-margin-desktop bg-[#F8FAFC]">
+<div class="max-w-container-max mx-auto space-y-gutter">
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#E2E8F0] pb-6">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background">Tax Position &amp; Return Sequence</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Q3 2023 Computation Overview</p>
+</div>
+<div class="bg-[#F1F5F9] px-3 py-1.5 rounded-full flex items-center gap-2 border border-[#E2E8F0]">
+<span class="material-symbols-outlined text-secondary text-[16px]" data-icon="link" data-weight="fill" style="font-variation-settings: 'FILL' 1;">link</span>
+<span class="font-label-sm text-label-sm text-on-surface">Blockchain Status: Secured</span>
+</div>
+</header>
+<!-- Computation Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Computation Summary Card -->
+<section class="md:col-span-2 bg-[#FFFFFF] rounded-xl border border-[#E2E8F0] shadow-ambient p-6 flex flex-col justify-between">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-background mb-6">Computation Summary</h2>
+<div class="space-y-4">
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors rounded px-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Gross Income</span>
+<span class="font-body-md text-body-md text-on-background font-medium">₱ 450,000.00</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors rounded px-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Allowable Deductions (8% Rate)</span>
+<span class="font-body-md text-body-md text-on-background font-medium">- ₱ 250,000.00</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors rounded px-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Taxable Income</span>
+<span class="font-body-md text-body-md text-on-background font-medium">₱ 200,000.00</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors rounded px-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Tax Due (8%)</span>
+<span class="font-body-md text-body-md text-on-background font-medium">₱ 16,000.00</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors rounded px-2 text-secondary">
+<span class="font-body-md text-body-md flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="receipt_long">receipt_long</span>
+                                    Tax Credits (Form 2307s)
+                                </span>
+<span class="font-body-md text-body-md font-medium">- ₱ 4,500.00</span>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t-2 border-on-background flex justify-between items-center bg-[#F8FAFC] p-4 rounded-lg">
+<span class="font-headline-md text-headline-md text-on-background">Total Tax Payable</span>
+<span class="font-headline-xl text-headline-xl text-on-background">₱ 11,500.00</span>
+</div>
+</section>
+<!-- 8-Step Filing Sequence Tracker -->
+<section class="bg-[#FFFFFF] rounded-xl border border-[#E2E8F0] shadow-ambient p-6">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-label-md text-label-md font-bold text-on-background uppercase tracking-wider">Filing Sequence</h2>
+<span class="bg-surface-container-low text-secondary px-2 py-1 rounded font-label-sm text-label-sm">Step 1 of 8</span>
+</div>
+<div class="relative space-y-6 ml-2">
+<!-- Step 1: Active -->
+<div class="flex items-start gap-4 relative">
+<div class="progress-line"></div>
+<div class="step-node w-8 h-8 rounded-full bg-[#FFFFFF] border-2 border-[#3B82F6] flex items-center justify-center shrink-0 shadow-[0_0_0_4px_white]">
+<div class="w-3 h-3 bg-[#3B82F6] rounded-full"></div>
+</div>
+<div class="pb-2">
+<h3 class="font-label-md text-label-md text-on-background font-bold">Form 1701Q</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Quarterly Income Tax Return</p>
+</div>
+</div>
+<!-- Step 2: Pending -->
+<div class="flex items-start gap-4 relative">
+<div class="progress-line"></div>
+<div class="step-node w-8 h-8 rounded-full bg-[#F1F5F9] border border-[#CBD5E1] flex items-center justify-center shrink-0 shadow-[0_0_0_4px_white]">
+</div>
+<div class="pb-2">
+<h3 class="font-label-md text-label-md text-on-surface-variant">Form 2551Q</h3>
+<p class="font-label-sm text-label-sm text-outline-variant">Quarterly Percentage Tax</p>
+</div>
+</div>
+<!-- Step 3: Pending -->
+<div class="flex items-start gap-4 relative">
+<div class="progress-line"></div>
+<div class="step-node w-8 h-8 rounded-full bg-[#F1F5F9] border border-[#CBD5E1] flex items-center justify-center shrink-0 shadow-[0_0_0_4px_white]">
+</div>
+<div class="pb-2">
+<h3 class="font-label-md text-label-md text-on-surface-variant">SAWT Generation</h3>
+<p class="font-label-sm text-label-sm text-outline-variant">Summary Alphalist of Withholding Tax</p>
+</div>
+</div>
+<!-- Step 4: Pending -->
+<div class="flex items-start gap-4 relative">
+<div class="step-node w-8 h-8 rounded-full bg-[#F1F5F9] border border-[#CBD5E1] flex items-center justify-center shrink-0 shadow-[0_0_0_4px_white]">
+</div>
+<div class="pb-2">
+<h3 class="font-label-md text-label-md text-on-surface-variant">eBIRForms Submission</h3>
+<p class="font-label-sm text-label-sm text-outline-variant">System Integration</p>
+</div>
+</div>
+<div class="text-center pt-2">
+<span class="font-label-sm text-label-sm text-outline-variant italic">+ 4 more steps to completion</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-[#E2E8F0]">
+<button class="w-full py-3 bg-[#0D9488] text-white font-label-md text-label-md rounded-lg hover:bg-opacity-90 transition-colors shadow-sm flex items-center justify-center gap-2">
+                            Proceed to Filing
+                            <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>
+
+<!-- Tax Position & Returns -->
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Krunchr - Filing Success</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#0b1c30",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#eff4ff",
+                        "on-surface": "#0b1c30",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#00201d",
+                        "on-surface-variant": "#45464d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface": "#f8f9ff",
+                        "tertiary-fixed": "#6ffbbe",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-secondary-container": "#006f66",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-tertiary-container": "#009668",
+                        "surface-container": "#e5eeff",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dce9ff",
+                        "inverse-surface": "#213145",
+                        "secondary": "#006a61",
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "outline": "#76777d",
+                        "primary": "#000000",
+                        "surface-bright": "#f8f9ff",
+                        "primary-fixed": "#dae2fd",
+                        "surface-tint": "#565e74",
+                        "on-tertiary-fixed": "#002113",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-primary-fixed": "#131b2e",
+                        "secondary-container": "#86f2e4",
+                        "tertiary-container": "#002113",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary-container": "#7c839b",
+                        "primary-container": "#131b2e",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "background": "#f8f9ff",
+                        "surface-variant": "#d3e4fe",
+                        "secondary-fixed": "#89f5e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Public Sans", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Public Sans", "sans-serif"],
+                        "headline-lg-mobile": ["Public Sans", "sans-serif"],
+                        "headline-xl": ["Public Sans", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "label-sm": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Public+Sans:wght@600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop">
+<!-- Main Content Canvas - No Nav Shells as this is a Transactional/Success screen -->
+<main class="w-full max-w-[800px] mx-auto bg-surface-container-lowest rounded-xl shadow-[0px_4px_6px_-1px_rgba(15,23,42,0.1),0px_2px_4px_-2px_rgba(15,23,42,0.05)] border border-outline-variant p-8 md:p-12">
+<!-- Header Section -->
+<div class="text-center mb-12">
+<div class="w-24 h-24 bg-tertiary-fixed-dim/20 rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-[64px] text-tertiary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Filing Complete &amp; Secured</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Your Form 2307 has been successfully filed and anchored to the Stellar network.</p>
+</div>
+<!-- Bento Grid for details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mb-12">
+<!-- Receipt Card -->
+<div class="col-span-1 md:col-span-2 bg-surface p-6 rounded-lg border border-outline-variant flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Stellar Blockchain Receipt</h3>
+<p class="font-body-md text-body-md text-on-surface mb-4">Transaction Hash:</p>
+<div class="bg-surface-container-low px-4 py-2 rounded-md font-mono text-sm break-all text-on-surface-variant border border-outline-variant/50">
+                        0x4b7a1c3e9f2d8a5b6c4e1f7a9d2b8c5e3f1a6d4b7c9e2f5a8b1c4e7d0f3a6b9c
+                    </div>
+</div>
+<div class="flex-shrink-0 flex flex-col items-center gap-2">
+<!-- Placeholder for QR Code -->
+<div class="w-32 h-32 bg-surface-container-high rounded-md flex items-center justify-center border border-outline-variant p-2" data-alt="A clean, high-contrast black and white QR code image on a pristine white background. The QR code should be sharp, modern, and perfectly square, representing a secure digital transaction link in a corporate tech environment. Lighting is flat and even to ensure perfect scanability.">
+<img alt="Verification QR Code" class="w-full h-full object-cover rounded-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQpzCGlcSllbOWYpaeimHWjOyv-HDuUXmc7zhoA41GEQF70EVsN8Qfhux529Q4R8OdeNn9J83eh1YpP5owLG_yESlO4LDTOIhBbSwI-47aikSEYJ17S2agkELw6po7QwVXb_p5Uwu_C2h3Plxa1NFanen0bRpFnUNUAanCh9FLTNYq6uRxyBe51XsF0HT1wILr6SaNuZ_FQawpizRqCupeTaY7mQP9S0uOpIB0wQgYFX9MHu6oN08mv-7Ig7BZIUJDxGUVZlMrbD8"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Scan to verify</span>
+</div>
+</div>
+<!-- Filing Details -->
+<div class="bg-surface p-6 rounded-lg border border-outline-variant">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-4">Filing Details</h4>
+<ul class="space-y-4">
+<li class="flex justify-between items-center border-b border-outline-variant/30 pb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Form Type</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Form 2307</span>
+</li>
+<li class="flex justify-between items-center border-b border-outline-variant/30 pb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Period</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Q3 2023</span>
+</li>
+<li class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Timestamp</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Oct 24, 2023 14:32 PHT</span>
+</li>
+</ul>
+</div>
+<!-- Next Steps -->
+<div class="bg-surface-container-low p-6 rounded-lg border border-outline-variant flex flex-col justify-center">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary">shield</span>
+<h4 class="font-label-md text-label-md text-secondary font-semibold">Compliance Status: Verified</h4>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    This filing has been cryptographically signed and recorded. No further action is required for this return sequence.
+                </p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<button class="bg-[#0D9488] hover:bg-[#0f766e] text-white px-8 py-3 rounded-lg font-label-md text-label-md transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">download</span>
+                Download Filing Package
+            </button>
+<button class="border border-[#64748B] text-[#64748B] hover:bg-surface-container-low px-8 py-3 rounded-lg font-label-md text-label-md transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">dashboard</span>
+                Return to Dashboard
+            </button>
+</div>
+</main>
+</body></html>
