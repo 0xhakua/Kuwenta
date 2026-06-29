@@ -19,7 +19,10 @@ export async function GET() {
           include: {
             returns: {
               orderBy: { sequenceOrder: 'asc' },
-              include: { penalties: true },
+              include: {
+                penalties: true,
+                stellarReceipt: true,
+              },
             },
           },
         },
@@ -38,12 +41,24 @@ export async function GET() {
         profile.corIncludes2551Q
       )
 
+      const stellarReceipt = ret.stellarReceipt
+        ? {
+            stellarTxId: ret.stellarReceipt.stellarTxId,
+            payloadHash: ret.stellarReceipt.payloadHash,
+            network: ret.stellarReceipt.network,
+            explorerUrl: ret.stellarReceipt.explorerUrl,
+            status: ret.stellarReceipt.status,
+            anchoredAt: ret.stellarReceipt.anchoredAt.toISOString(),
+          }
+        : null
+
       return {
         ...ret,
         // Persisted status may be stale if dependencies changed; use dynamic status for display
         status: dynamicStatus,
         deadline: ret.statutoryDueDate,
         penalty: ret.penalties ?? null,
+        stellarReceipt,
       }
     })
 
