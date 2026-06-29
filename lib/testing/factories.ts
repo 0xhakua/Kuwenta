@@ -83,7 +83,8 @@ export async function createTaxpayerWithYear(overrides: {
     overrides.year ?? 2026,
     overrides.corIncludes2551Q ?? true,
     [],
-    prisma
+    prisma,
+    overrides.incomeType ?? 'PURE_SELF_EMPLOYMENT'
   )
   return { user, profile, taxYear }
 }

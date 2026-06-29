@@ -125,7 +125,8 @@ export async function POST(req: NextRequest) {
         data.taxYear,
         data.corIncludes2551Q,
         holidays.map((h) => h.date),
-        tx
+        tx,
+        data.incomeType
       )
 
       return created

@@ -62,11 +62,12 @@ export async function POST(
       return NextResponse.json({ error: 'Return already filed' }, { status: 409 })
     }
 
-    // 1701A with overpayment requires disposition selection before filing
-    if (ret.formType === 'FORM_1701A' && ret.overpaymentAmt) {
+    // Annual return with overpayment requires disposition selection before filing
+    const isAnnualForm = ret.formType === 'FORM_1701A' || ret.formType === 'FORM_1701'
+    if (isAnnualForm && ret.overpaymentAmt) {
       if (!taxYear.overpayment?.disposition) {
         return NextResponse.json(
-          { error: 'Overpayment disposition is required before filing 1701A' },
+          { error: 'Overpayment disposition is required before filing the annual return' },
           { status: 409 }
         )
       }

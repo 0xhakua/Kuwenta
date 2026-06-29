@@ -67,7 +67,7 @@ export async function GET() {
     }
 
     const taxYear = profile.taxYears[0]
-    const sequence = getSequence(profile.corIncludes2551Q)
+    const sequence = getSequence(profile.corIncludes2551Q, profile.incomeType)
 
     const totalGross = taxYear.certificates.reduce(
       (sum, cert) => sum.plus(cert.quarterlyTotal),

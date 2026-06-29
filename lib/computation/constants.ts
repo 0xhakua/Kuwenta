@@ -32,9 +32,10 @@ export const SEQUENCE_DEPENDENCIES_4: Record<number, number[]> = {
 }
 
 export type IncomeTypeValue = 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME'
+export type FormTypeValue = 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A' | 'FORM_1701'
 export type SequenceReturn = {
   sequenceOrder: number
-  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+  formType: FormTypeValue
   quarter: number | null
   label: string
   period: string
@@ -52,9 +53,16 @@ export const STATUTORY_DUE_DATES: Record<string, (year: number) => Date> = {
   'FORM_1701Q-Q2': (y) => new Date(y, 7, 15), // August 15
   'FORM_1701Q-Q3': (y) => new Date(y, 10, 15), // November 15
   'FORM_1701A': (y) => new Date(y + 1, 3, 15), // April 15 next year
+  'FORM_1701': (y) => new Date(y + 1, 3, 15), // April 15 next year (mixed-income annual)
 }
 
-export function getSequence(corIncludes2551Q: boolean): SequenceReturn[] {
+export function getSequence(
+  corIncludes2551Q: boolean,
+  incomeType: IncomeTypeValue = 'PURE_SELF_EMPLOYMENT'
+): SequenceReturn[] {
+  const annualForm: FormTypeValue = incomeType === 'MIXED_INCOME' ? 'FORM_1701' : 'FORM_1701A'
+  const annualLabel = incomeType === 'MIXED_INCOME' ? '1701 Annual' : '1701A Annual'
+
   if (corIncludes2551Q) {
     return [
       {
@@ -115,9 +123,9 @@ export function getSequence(corIncludes2551Q: boolean): SequenceReturn[] {
       },
       {
         sequenceOrder: 8,
-        formType: 'FORM_1701A',
+        formType: annualForm,
         quarter: null,
-        label: '1701A Annual',
+        label: annualLabel,
         period: 'Full Year',
         deadline: 'April 15 (next yr)',
       },
@@ -151,9 +159,9 @@ export function getSequence(corIncludes2551Q: boolean): SequenceReturn[] {
     },
     {
       sequenceOrder: 4,
-      formType: 'FORM_1701A',
+      formType: annualForm,
       quarter: null,
-      label: '1701A Annual',
+      label: annualLabel,
       period: 'Full Year',
       deadline: 'April 15 (next yr)',
     },

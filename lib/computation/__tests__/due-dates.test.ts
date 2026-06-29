@@ -67,6 +67,7 @@ describe('getStatutoryDueDate', () => {
     expect(getStatutoryDueDate('FORM_1701Q', 2, 2026).toDateString()).toBe('Sat Aug 15 2026')
     expect(getStatutoryDueDate('FORM_1701Q', 3, 2026).toDateString()).toBe('Sun Nov 15 2026')
     expect(getStatutoryDueDate('FORM_1701A', null, 2026).toDateString()).toBe('Thu Apr 15 2027')
+    expect(getStatutoryDueDate('FORM_1701', null, 2026).toDateString()).toBe('Thu Apr 15 2027')
   })
 
   it('throws for an unknown form type/quarter combination', () => {
@@ -96,6 +97,18 @@ describe('getDueDatesForYear', () => {
       expect(day).not.toBe(0)
       expect(day).not.toBe(6)
     }
+  })
+
+  it('returns Form 1701 for mixed-income annual return', () => {
+    const calendar = getDueDatesForYear(2026, true, [], 'MIXED_INCOME')
+    expect(calendar).toHaveLength(8)
+    expect(calendar[7]).toMatchObject({ formType: 'FORM_1701', quarter: null })
+  })
+
+  it('returns Form 1701 for mixed-income annual return on 4-return path', () => {
+    const calendar = getDueDatesForYear(2026, false, [], 'MIXED_INCOME')
+    expect(calendar).toHaveLength(4)
+    expect(calendar[3]).toMatchObject({ formType: 'FORM_1701', quarter: null })
   })
 
   it('uses the provided holiday list when rolling dates', () => {

@@ -32,7 +32,7 @@ Each entry:
 - What changed: Added journal entry generation for overpayment dispositions and year-end closing entries.
 - Files touched: `lib/journal/`, `prisma/schema.prisma`
 
-### 2026-06-29 — Krunchr brand design system
-- Commit: `aac6ae3`
-- What changed: Established Krunchr brand design system and wire theme.
-- Files touched: `app/globals.css`, `components/ui/`, `public/`
+### 2026-06-29 — Mixed-income Form 1701 routing (BR-08)
+- PR: `issue-3-br-08-mixed-income-1701`
+- What changed: Added `FORM_1701` to the Prisma enum and updated tax-year initialization to slot Form 1701 (instead of 1701A) as the annual return for `MIXED_INCOME` taxpayers. Added a Form 1701 PDF template and dispatcher case, updated recascade and filing endpoints to treat Form 1701 as an annual return, and hard-blocked 1701A generation for mixed-income earners.
+- Files touched: `prisma/schema.prisma`, `prisma/migrations/20260629120400_add_form_1701_enum/`, `lib/tax-year.ts`, `lib/computation/constants.ts`, `lib/computation/due-dates.ts`, `lib/computation/recascade.ts`, `lib/pdf/dispatcher.tsx`, `lib/pdf/templates/form-1701.tsx`, `app/api/dashboard/route.ts`, `app/api/taxpayer/route.ts`, `app/api/returns/[id]/generate/route.ts`, `app/api/returns/[id]/file/route.ts`, `prisma/seed.ts`, `lib/testing/factories.ts`, `lib/__tests__/tax-year.test.ts`, `lib/computation/__tests__/due-dates.test.ts`

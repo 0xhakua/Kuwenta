@@ -108,7 +108,9 @@ async function main() {
         profile.id,
         taxYear,
         profileData.corIncludes2551Q,
-        holidays.map((h) => h.date)
+        holidays.map((h) => h.date),
+        prisma,
+        profileData.incomeType
       )
     }
   }
