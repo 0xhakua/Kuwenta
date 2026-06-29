@@ -60,3 +60,20 @@ export function buildActiveYearCookieAttributes(year: number): string {
     .filter(Boolean)
     .join('; ')
 }
+
+export type TaxYearLike = { year: number }
+
+export async function resolveTaxYearFromRequest<T extends TaxYearLike>(
+  request: Request,
+  taxYears: T[]
+): Promise<T | null> {
+  if (taxYears.length === 0) return null
+  const availableYears = taxYears.map((ty) => ty.year)
+  const resolved = await getActiveYearFromRequest(request, availableYears)
+  if (resolved != null) {
+    const match = taxYears.find((ty) => ty.year === resolved)
+    if (match) return match
+  }
+  return taxYears[0]
+}
+

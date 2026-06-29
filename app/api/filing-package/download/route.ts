@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { determineReturnStatus } from '@/lib/computation/sequence'
 import { renderFilingPdf } from '@/lib/pdf/dispatcher'
 import { CoverSheet } from '@/lib/pdf/cover-sheet'
+import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
 
 function escapeCsv(value: string | number): string {
   const str = String(value)
@@ -16,7 +17,7 @@ function escapeCsv(value: string | number): string {
   return str
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,7 +29,6 @@ export async function GET() {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: {
             certificates: true,
             returns: {
@@ -39,11 +39,15 @@ export async function GET() {
       },
     })
 
-    if (!profile?.taxYears[0]) {
+    if (!profile || profile.taxYears.length === 0) {
       return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
     }
 
-    const taxYear = profile.taxYears[0]
+    const taxYear = await resolveTaxYearFromRequest(request, profile.taxYears)
+    if (!taxYear) {
+      return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
+    }
+    await setActiveYearCookie(taxYear.year)
     const returns = taxYear.returns.map((ret) => ({
       ...ret,
       status: determineReturnStatus(ret.sequenceOrder, taxYear.returns, profile.corIncludes2551Q),

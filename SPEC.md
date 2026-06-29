@@ -419,6 +419,9 @@ GET    /api/sawt/attachments    — Get attachments checklist with status per it
 GET    /api/filing-package      — Get full filing package metadata
 GET    /api/filing-package/download — Stream ZIP of all 8 returns + SAWT + cover sheet
 ```
+All endpoints in this section honor the active-year resolver:
+`?year=YYYY` query param → `active_year` cookie → latest tax year. The
+selected year is written back to the `active_year` cookie on the response.
 
 ### Journal Entries
 ```
