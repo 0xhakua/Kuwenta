@@ -66,9 +66,11 @@ model TaxYear {
   taxpayerId      String
   taxpayer        TaxpayerProfile @relation(fields: [taxpayerId], references: [id])
   year            Int             // e.g. 2025
-  electionStatus  ElectionStatus  @default(NOT_ELECTED)
-  electedRate     TaxRate?
-  electionDate    DateTime?
+  electionStatus   ElectionStatus  @default(NOT_ELECTED)
+  electedRate      TaxRate?
+  electionPath     String?         // ITEM_13_2551Q_Q1 | ITEM_16_1701Q_Q1 (actual BIR line item)
+  electionMethod   String?         // ITEM_13_2551Q_Q1 | ITEM_16_1701Q_Q1 | FORM_1905 (how the election was recorded)
+  electionDate     DateTime?
   electionLockedAt DateTime?
   vatBreached     Boolean         @default(false)
   vatBreachDate   DateTime?

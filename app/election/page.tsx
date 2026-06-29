@@ -15,14 +15,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+type ElectionPath = 'ITEM_13_2551Q_Q1' | 'ITEM_16_1701Q_Q1' | 'FORM_1905'
+
 type ElectionStatus = {
   electionStatus: string
   electedRate: string | null
+  electionPath: ElectionPath
+  electionMethod: ElectionPath
   electionDate: string | null
   electionLockedAt: string | null
   canElect: boolean
-  electionPath: 'ITEM_13_2551Q_Q1' | 'ITEM_16_1701Q_Q1'
+  defaultElectionPath: ElectionPath
   firstReturnFiled: boolean
+}
+
+const PATH_LABELS: Record<ElectionPath, string> = {
+  ITEM_13_2551Q_Q1: 'Item 13 on Q1 Form 2551Q (standard 8-return path)',
+  ITEM_16_1701Q_Q1: 'Item 16 on Q1 Form 1701Q (4-return path; COR does not include 2551Q)',
+  FORM_1905: 'BIR Form 1905 (COR update filed with RDO)',
 }
 
 const disclosures = [
@@ -35,6 +45,7 @@ const disclosures = [
 export default function ElectionPage() {
   const router = useRouter()
   const [status, setStatus] = useState<ElectionStatus | null>(null)
+  const [selectedPath, setSelectedPath] = useState<ElectionPath | ''>('')
   const [selectedRate, setSelectedRate] = useState<'RATE_8PCT' | 'GRADUATED' | ''>('')
   const [acknowledged, setAcknowledged] = useState<boolean[]>([false, false, false, false])
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -53,6 +64,7 @@ export default function ElectionPage() {
             return
           }
           setStatus(data)
+          setSelectedPath(data.electionMethod || data.defaultElectionPath)
           if (data.electedRate) {
             setSelectedRate(data.electedRate)
           }
@@ -72,6 +84,10 @@ export default function ElectionPage() {
   }
 
   function openConfirm() {
+    if (!selectedPath) {
+      setError('Please select an election path')
+      return
+    }
     if (!selectedRate) {
       setError('Please select a tax rate option')
       return
@@ -95,6 +111,7 @@ export default function ElectionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           electedRate: selectedRate,
+          electionPath: selectedPath,
           disclosuresAcknowledged: selectedRate === 'RATE_8PCT' ? allAcknowledged() : true,
         }),
       })
@@ -134,6 +151,15 @@ export default function ElectionPage() {
               {status.electedRate === 'RATE_8PCT' ? '8% Income Tax Rate' : 'Graduated Income Tax Rate'}
             </p>
             <p>
+              <strong>Election method:</strong>{' '}
+              {PATH_LABELS[status.electionMethod]}
+            </p>
+            {status.electionMethod === 'FORM_1905' && (
+              <p>
+                <strong>Recorded as:</strong> {PATH_LABELS[status.electionPath]}
+              </p>
+            )}
+            <p>
               <strong>Locked at:</strong>{' '}
               {status.electionLockedAt ? new Date(status.electionLockedAt).toLocaleString() : 'N/A'}
             </p>
@@ -153,12 +179,40 @@ export default function ElectionPage() {
         <>
           <Card>
             <CardHeader>
+              <CardTitle>Election Path</CardTitle>
+              <CardDescription>
+                Choose how the 8% election is recorded with the BIR.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <RadioGroup
+                value={selectedPath}
+                onValueChange={(v) => setSelectedPath(v as ElectionPath)}
+              >
+                {(Object.keys(PATH_LABELS) as ElectionPath[]).map((path) => (
+                  <div key={path} className="flex items-start space-x-3 rounded-md border p-4">
+                    <RadioGroupItem value={path} id={path} />
+                    <div className="grid gap-1">
+                      <Label htmlFor={path} className="font-medium">
+                        {path === 'FORM_1905'
+                          ? 'Form 1905 (COR update)'
+                          : path === 'ITEM_13_2551Q_Q1'
+                            ? 'Item 13 on Q1 2551Q'
+                            : 'Item 16 on Q1 1701Q'}
+                      </Label>
+                      <span className="text-sm text-muted-foreground">{PATH_LABELS[path]}</span>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Select Tax Rate</CardTitle>
               <CardDescription>
-                Election path:{' '}
-                {status.electionPath === 'ITEM_13_2551Q_Q1'
-                  ? 'Item 13 on Q1 Form 2551Q (standard 8-return path)'
-                  : 'Item 16 on Q1 Form 1701Q (4-return path; COR does not include 2551Q)'}
+                Election path: {selectedPath ? PATH_LABELS[selectedPath as ElectionPath] : '—'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -52,6 +52,9 @@ export async function createTaxYear(
   overrides: Partial<{
     electedRate: 'RATE_8PCT' | 'GRADUATED' | null
     electionStatus: 'NOT_ELECTED' | 'ELECTED_8PCT' | 'ELECTED_GRADUATED'
+    electionPath: string | null
+    electionMethod: string | null
+    electionLockedAt: Date | null
   }> = {}
 ) {
   return prisma.taxYear.create({
@@ -60,6 +63,9 @@ export async function createTaxYear(
       year,
       electedRate: overrides.electedRate ?? 'RATE_8PCT',
       electionStatus: overrides.electionStatus ?? 'ELECTED_8PCT',
+      electionPath: overrides.electionPath ?? null,
+      electionMethod: overrides.electionMethod ?? null,
+      electionLockedAt: overrides.electionLockedAt ?? null,
     },
   })
 }
