@@ -67,6 +67,7 @@ async function loadTaxYearContext(
           amount: taxYear.priorYearCredit.amount,
           originYear: taxYear.priorYearCredit.originYear,
           originForm: taxYear.priorYearCredit.originForm,
+          sourceOverpaymentId: taxYear.priorYearCredit.sourceOverpaymentId ?? null,
         }
       : null,
     overpayment: taxYear.overpayment
@@ -74,6 +75,12 @@ async function loadTaxYearContext(
           id: taxYear.overpayment.id,
           amount: taxYear.overpayment.amount,
           disposition: taxYear.overpayment.disposition,
+          electedAt: taxYear.overpayment.electedAt,
+          carryOverAppliedAt: taxYear.overpayment.carryOverAppliedAt ?? null,
+          refundReceivedAt: taxYear.overpayment.refundReceivedAt ?? null,
+          refundReference: taxYear.overpayment.refundReference ?? null,
+          tccNumber: taxYear.overpayment.tccNumber ?? null,
+          tccAppliedAt: taxYear.overpayment.tccAppliedAt ?? null,
         }
       : null,
   }
@@ -149,6 +156,7 @@ export async function regenerateJournalEntries(
           amount: taxYear.priorYearCredit.amount,
           originYear: taxYear.priorYearCredit.originYear ?? taxYear.year - 1,
           originForm: taxYear.priorYearCredit.originForm ?? '1701A',
+          sourceOverpaymentId: taxYear.priorYearCredit.sourceOverpaymentId ?? null,
         },
       })
     )
@@ -169,7 +177,7 @@ export async function regenerateJournalEntries(
     }
   }
 
-  // 9F — overpayment disposition
+  // 9F — overpayment disposition (step 1 + step 2 entries)
   if (taxYear.overpayment?.disposition) {
     entries.push(
       ...generateOverpaymentEntries({
@@ -178,6 +186,12 @@ export async function regenerateJournalEntries(
           id: taxYear.overpayment.id,
           amount: taxYear.overpayment.amount,
           disposition: taxYear.overpayment.disposition,
+          electedAt: taxYear.overpayment.electedAt,
+          carryOverAppliedAt: taxYear.overpayment.carryOverAppliedAt,
+          refundReceivedAt: taxYear.overpayment.refundReceivedAt,
+          refundReference: taxYear.overpayment.refundReference,
+          tccNumber: taxYear.overpayment.tccNumber,
+          tccAppliedAt: taxYear.overpayment.tccAppliedAt,
         },
       })
     )
@@ -318,6 +332,12 @@ export async function generateOverpaymentJournal(
       id: overpayment.id,
       amount: overpayment.amount,
       disposition: overpayment.disposition,
+      electedAt: overpayment.electedAt,
+      carryOverAppliedAt: overpayment.carryOverAppliedAt ?? null,
+      refundReceivedAt: overpayment.refundReceivedAt ?? null,
+      refundReference: overpayment.refundReference ?? null,
+      tccNumber: overpayment.tccNumber ?? null,
+      tccAppliedAt: overpayment.tccAppliedAt ?? null,
     },
   })
 

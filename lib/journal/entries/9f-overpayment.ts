@@ -13,15 +13,19 @@ import type { JournalEntryInput } from '../accounts'
  * 9.19 TCC elected (Step 1): Dr. Tax Credit Certificate Asset → Cr. Income Tax Expense
  * 9.20 TCC applied (Step 2): Dr. Income Tax Payable → Cr. Tax Credit Certificate Asset
  *
- * Only the first-step entries (9.15, 9.17, 9.19) are generated when the taxpayer
- * elects a disposition. Step-two entries require future triggering events.
+ * Step-1 entries (9.15, 9.17, 9.19) are generated when the taxpayer elects a
+ * disposition. Step-2 entries (9.16, 9.18, 9.20) are generated when the
+ * corresponding settlement event has been recorded on the Overpayment row:
+ *   - 9.16  when `carryOverAppliedAt` is set (next-year application)
+ *   - 9.18  when `refundReceivedAt` is set (BIR refund credited to bank)
+ *   - 9.20  when `tccAppliedAt` is set (TCC applied against 1701A in a later year)
  */
 export function generateOverpaymentEntries(
   input: OverpaymentInput
 ): JournalEntryInput[] {
   const { overpayment, taxYear } = input
   const amount = overpayment.amount
-  const electedAt = new Date()
+  const electedAt = overpayment.electedAt ?? new Date()
 
   const base = {
     taxYearId: taxYear.id,
@@ -33,7 +37,7 @@ export function generateOverpaymentEntries(
   }
 
   if (overpayment.disposition === 'CARRY_OVER') {
-    return [
+    const entries: JournalEntryInput[] = [
       {
         ...base,
         entryNumber: '9.15',
@@ -57,10 +61,14 @@ export function generateOverpaymentEntries(
         ],
       },
     ]
+    if (overpayment.carryOverAppliedAt) {
+      entries.push(generateCarryOverAppliedEntry(input))
+    }
+    return entries
   }
 
   if (overpayment.disposition === 'REFUND') {
-    return [
+    const entries: JournalEntryInput[] = [
       {
         ...base,
         entryNumber: '9.17',
@@ -84,10 +92,14 @@ export function generateOverpaymentEntries(
         ],
       },
     ]
+    if (overpayment.refundReceivedAt) {
+      entries.push(generateRefundReceivedEntry(input))
+    }
+    return entries
   }
 
   if (overpayment.disposition === 'TAX_CREDIT_CERTIFICATE') {
-    return [
+    const entries: JournalEntryInput[] = [
       {
         ...base,
         entryNumber: '9.19',
@@ -111,7 +123,145 @@ export function generateOverpaymentEntries(
         ],
       },
     ]
+    if (overpayment.tccAppliedAt) {
+      entries.push(generateTccAppliedEntry(input))
+    }
+    return entries
   }
 
   return []
+}
+
+/**
+ * 9.16 — Carry Over applied next year.
+ *
+ * Triggered when the next tax year creates a PriorYearCredit sourced from this
+ * Overpayment (i.e. the carry-over has been applied against 1701A in the
+ * following year). The 9.16 entry zeroes out the Prepaid Income Tax asset in
+ * the original year.
+ */
+export function generateCarryOverAppliedEntry(
+  input: OverpaymentInput
+): JournalEntryInput | null {
+  const { overpayment, taxYear } = input
+  if (overpayment.disposition !== 'CARRY_OVER' || !overpayment.carryOverAppliedAt) {
+    return null
+  }
+  const amount = overpayment.amount
+  return {
+    taxYearId: taxYear.id,
+    entryNumber: '9.16',
+    subsection: '9F',
+    triggerEvent: 'OVERPAYMENT_CARRY_OVER_APPLIED',
+    triggerEntityId: overpayment.id,
+    entryDate: overpayment.carryOverAppliedAt,
+    regulationRef: 'RR No. 8-2018',
+    workflowMenu: 'Returns > Prior Year Credit (applied next year)',
+    isMemo: false,
+    lines: [
+      {
+        lineOrder: 1,
+        accountCode: ACCOUNTS.INCOME_TAX_PAYABLE.code,
+        accountName: ACCOUNTS.INCOME_TAX_PAYABLE.name,
+        debit: amount,
+        credit: new Decimal('0'),
+      },
+      {
+        lineOrder: 2,
+        accountCode: ACCOUNTS.PREPAID_INCOME_TAX.code,
+        accountName: ACCOUNTS.PREPAID_INCOME_TAX.name,
+        debit: new Decimal('0'),
+        credit: amount,
+      },
+    ],
+  }
+}
+
+/**
+ * 9.18 — Refund received from BIR.
+ *
+ * Triggered when BIR credits the refund to the taxpayer's bank account. The
+ * 9.18 entry clears the Income Tax Refund Receivable and recognises cash.
+ */
+export function generateRefundReceivedEntry(
+  input: OverpaymentInput
+): JournalEntryInput | null {
+  const { overpayment, taxYear } = input
+  if (overpayment.disposition !== 'REFUND' || !overpayment.refundReceivedAt) {
+    return null
+  }
+  const amount = overpayment.amount
+  return {
+    taxYearId: taxYear.id,
+    entryNumber: '9.18',
+    subsection: '9F',
+    triggerEvent: 'OVERPAYMENT_REFUND_RECEIVED',
+    triggerEntityId: overpayment.id,
+    entryDate: overpayment.refundReceivedAt,
+    regulationRef: 'RR No. 8-2018',
+    workflowMenu: 'Returns > Refund Received',
+    isMemo: false,
+    lines: [
+      {
+        lineOrder: 1,
+        accountCode: ACCOUNTS.CASH.code,
+        accountName: ACCOUNTS.CASH.name,
+        debit: amount,
+        credit: new Decimal('0'),
+      },
+      {
+        lineOrder: 2,
+        accountCode: ACCOUNTS.INCOME_TAX_REFUND_RECEIVABLE.code,
+        accountName: ACCOUNTS.INCOME_TAX_REFUND_RECEIVABLE.name,
+        debit: new Decimal('0'),
+        credit: amount,
+      },
+    ],
+  }
+}
+
+/**
+ * 9.20 — TCC applied against 1701A in a later year.
+ *
+ * Triggered when the BIR-issued Tax Credit Certificate is consumed (applied
+ * against 1701A payable in a later year). The 9.20 entry clears the TCC asset.
+ */
+export function generateTccAppliedEntry(
+  input: OverpaymentInput
+): JournalEntryInput | null {
+  const { overpayment, taxYear } = input
+  if (
+    overpayment.disposition !== 'TAX_CREDIT_CERTIFICATE' ||
+    !overpayment.tccAppliedAt
+  ) {
+    return null
+  }
+  const amount = overpayment.amount
+  return {
+    taxYearId: taxYear.id,
+    entryNumber: '9.20',
+    subsection: '9F',
+    triggerEvent: 'OVERPAYMENT_TCC_APPLIED',
+    triggerEntityId: overpayment.id,
+    entryDate: overpayment.tccAppliedAt,
+    regulationRef: 'RR No. 8-2018',
+    workflowMenu: 'Returns > TCC Applied',
+    isMemo: false,
+    lines: [
+      {
+        lineOrder: 1,
+        accountCode: ACCOUNTS.INCOME_TAX_PAYABLE.code,
+        accountName: ACCOUNTS.INCOME_TAX_PAYABLE.name,
+        debit: amount,
+        credit: new Decimal('0'),
+      },
+      {
+        lineOrder: 2,
+        accountCode: ACCOUNTS.TAX_CREDIT_CERTIFICATE_ASSET.code,
+        accountName: ACCOUNTS.TAX_CREDIT_CERTIFICATE_ASSET.name,
+        debit: new Decimal('0'),
+        credit: amount,
+      },
+    ],
+  }
 }

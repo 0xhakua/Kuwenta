@@ -4,7 +4,10 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
-import { generatePriorYearCreditJournal } from '@/lib/journal/generator'
+import {
+  generateOverpaymentJournal,
+  generatePriorYearCreditJournal,
+} from '@/lib/journal/generator'
 
 const createSchema = z.object({
   amount: z.union([z.string(), z.number()]).transform((v) => String(v)),
@@ -102,6 +105,18 @@ export async function POST(req: Request) {
     }
 
     const credit = await prisma.$transaction(async (tx) => {
+      // If the credit is a carry-over from a prior-year Overpayment, link
+      // them and stamp the prior-year settlement (drives journal 9.16).
+      const priorOverpayment =
+        data.priorDisposition === 'CARRY_OVER'
+          ? await tx.overpayment.findFirst({
+              where: {
+                disposition: 'CARRY_OVER',
+                taxYear: { taxpayerId: taxYear.taxpayerId, year: data.originYear },
+              },
+            })
+          : null
+
       const created = await tx.priorYearCredit.create({
         data: {
           taxYearId: taxYear.id,
@@ -111,11 +126,33 @@ export async function POST(req: Request) {
           priorDisposition: data.priorDisposition,
           isValidated: true,
           userConfirmedAt: new Date(),
+          sourceOverpaymentId: priorOverpayment?.id ?? null,
         },
       })
 
+      if (priorOverpayment) {
+        await tx.overpayment.update({
+          where: { id: priorOverpayment.id },
+          data: { carryOverAppliedAt: new Date() },
+        })
+      }
+
       await recascadeTaxYear({ taxYearId: taxYear.id, tx })
       await generatePriorYearCreditJournal(taxYear.id, created.id, tx)
+
+      if (priorOverpayment) {
+        await tx.journalEntry.deleteMany({
+          where: {
+            taxYearId: priorOverpayment.taxYearId,
+            subsection: '9F',
+          },
+        })
+        await generateOverpaymentJournal(
+          priorOverpayment.taxYearId,
+          priorOverpayment.id,
+          tx
+        )
+      }
 
       return created
     })
