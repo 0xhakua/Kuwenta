@@ -26,7 +26,7 @@ export async function GET() {
     })
 
     return NextResponse.json({
-      logs: logs.map((log) => ({
+      logs: logs.map((log: (typeof logs)[number]) => ({
         ...log,
         username: log.user.username,
       })),
