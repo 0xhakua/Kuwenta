@@ -34,8 +34,16 @@ interface AdminUser {
   } | null
 }
 
+interface SystemHealthSummary {
+  ok: boolean
+  stellar: { ok: boolean; network: string; reachable: boolean; message: string }
+  storage: { ok: boolean; type: string; writable: boolean; message: string }
+  database: { ok: boolean; message: string }
+}
+
 export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [health, setHealth] = useState<SystemHealthSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -60,11 +68,37 @@ export default function AdminPage() {
       }
     }
 
+    async function loadHealth() {
+      try {
+        const res = await fetch('/api/admin/system-health')
+        const data = await res.json()
+        if (cancelled) return
+        if (res.ok) {
+          setHealth({
+            ok: data.ok,
+            stellar: data.stellar,
+            storage: data.storage,
+            database: data.database,
+          })
+        }
+      } catch {
+        /* leave health null on transient network errors */
+      }
+    }
+
     loadUsers()
+    loadHealth()
     return () => {
       cancelled = true
     }
   }, [])
+
+  const healthBadge = (ok: boolean) =>
+    ok ? (
+      <Badge className="bg-green-100 text-green-800">OK</Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-800">Degraded</Badge>
+    )
 
   return (
     <div className="space-y-6">
@@ -78,9 +112,9 @@ export default function AdminPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loading && <p className="text-muted-foreground">Loading users…</p>}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Link href="/admin/audit-log">
-          <Card className="hover:bg-muted/50 transition-colors">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Audit Log</CardTitle>
               <CardDescription>System activity trail</CardDescription>
@@ -91,7 +125,7 @@ export default function AdminPage() {
           </Card>
         </Link>
         <Link href="/admin/atc">
-          <Card className="hover:bg-muted/50 transition-colors">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">ATC Codes</CardTitle>
               <CardDescription>Withholding tax codes</CardDescription>
@@ -102,7 +136,7 @@ export default function AdminPage() {
           </Card>
         </Link>
         <Link href="/admin/holidays">
-          <Card className="hover:bg-muted/50 transition-colors">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Holidays</CardTitle>
               <CardDescription>Deadline rolling calendar</CardDescription>
@@ -113,13 +147,48 @@ export default function AdminPage() {
           </Card>
         </Link>
         <Link href="/admin/rdo-penalties">
-          <Card className="hover:bg-muted/50 transition-colors">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">RDO Penalties</CardTitle>
               <CardDescription>Compromise fees by RDO</CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" size="sm">Manage</Button>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/system-health">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">System Health</CardTitle>
+                {health ? healthBadge(health.ok) : (
+                  <Badge className="bg-muted text-muted-foreground">—</Badge>
+                )}
+              </div>
+              <CardDescription>
+                Stellar + storage status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {health ? (
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Stellar</span>
+                    {healthBadge(health.stellar.ok)}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Storage</span>
+                    {healthBadge(health.storage.ok)}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Database</span>
+                    {healthBadge(health.database.ok)}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Loading…</p>
+              )}
             </CardContent>
           </Card>
         </Link>
