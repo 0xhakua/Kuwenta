@@ -27,7 +27,10 @@ cp .env.example .env.local
 docker-compose up -d
 
 # 4. Run migrations and seed
-pnpm prisma migrate dev
+# `migrate deploy` applies pending migrations without creating a new one —
+# use it on every fresh clone and after every `git pull`.
+# `migrate dev` is only needed when you intentionally edit schema.prisma.
+pnpm prisma migrate deploy
 pnpm prisma db seed
 
 # 5. Start dev server
