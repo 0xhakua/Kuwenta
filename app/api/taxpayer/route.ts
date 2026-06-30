@@ -62,7 +62,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const result = taxpayerSchema.safeParse(body)
     if (!result.success) {
-      return NextResponse.json({ error: result.error.format() }, { status: 400 })
+      const flat = result.error.flatten()
+      return NextResponse.json(
+        {
+          error: 'Validation failed',
+          formErrors: flat.formErrors,
+          fieldErrors: flat.fieldErrors,
+        },
+        { status: 400 }
+      )
     }
 
     const data = result.data
@@ -164,7 +172,15 @@ export async function PUT(req: NextRequest) {
     const body = await req.json()
     const result = taxpayerSchema.partial().safeParse(body)
     if (!result.success) {
-      return NextResponse.json({ error: result.error.format() }, { status: 400 })
+      const flat = result.error.flatten()
+      return NextResponse.json(
+        {
+          error: 'Validation failed',
+          formErrors: flat.formErrors,
+          fieldErrors: flat.fieldErrors,
+        },
+        { status: 400 }
+      )
     }
 
     const data = result.data
