@@ -1,0 +1,100 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+
+// `vi.mock` is hoisted to the top of the file, so any state it references
+// has to be wrapped in `vi.hoisted` to avoid a TDZ error.
+const mocks = vi.hoisted(() => ({
+  findUnique: vi.fn(),
+}))
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    user: { findUnique: mocks.findUnique },
+  },
+}))
+
+vi.mock('@/lib/auth/session', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth/session')>('@/lib/auth/session')
+  return {
+    ...actual,
+    setSessionCookie: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
+const cookieStore = new Map<string, string>()
+vi.mock('next/headers', () => ({
+  cookies: async () => ({
+    get: (name: string) => {
+      const value = cookieStore.get(name)
+      return value != null ? { name, value } : undefined
+    },
+    set: (opts: { name: string; value: string }) => {
+      cookieStore.set(opts.name, opts.value)
+    },
+  }),
+}))
+
+import { createUser } from '@/lib/testing/factories'
+import { POST } from '../route'
+
+function jsonRequest(body: unknown) {
+  return new Request('http://localhost/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+describe('POST /api/auth/login', () => {
+  beforeEach(() => {
+    process.env.JWT_SECRET = 'test-jwt-secret-32-chars-minimum-aaaaaaaa'
+    mocks.findUnique.mockReset()
+  })
+
+  it('returns 503 with code DB_UNAVAILABLE when Prisma throws on the user lookup', async () => {
+    mocks.findUnique.mockRejectedValueOnce(new Error('relation "User" does not exist'))
+
+    const res = await POST(jsonRequest({ username: 'admin', password: 'admin1234!' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(503)
+    expect(body).toMatchObject({
+      error: 'Login temporarily unavailable',
+      code: 'DB_UNAVAILABLE',
+    })
+  })
+
+  it('returns 401 with Invalid credentials when the user does not exist', async () => {
+    mocks.findUnique.mockResolvedValueOnce(null)
+
+    const res = await POST(jsonRequest({ username: 'no-such-user', password: 'whatever' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body).toEqual({ error: 'Invalid credentials' })
+  })
+
+  it('returns 401 with Invalid credentials for a wrong password', async () => {
+    const user = await createUser({ username: 'wrong-pwd-test', password: 'right-pwd' })
+    mocks.findUnique.mockResolvedValueOnce(user)
+
+    const res = await POST(jsonRequest({ username: user.username, password: 'wrong-pwd' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body).toEqual({ error: 'Invalid credentials' })
+  })
+
+  it('returns 200 with the user payload on a valid login', async () => {
+    const user = await createUser({ username: 'happy-path', password: 'Test1234!' })
+    mocks.findUnique.mockResolvedValueOnce(user)
+
+    const res = await POST(jsonRequest({ username: 'happy-path', password: 'Test1234!' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.user).toMatchObject({
+      id: user.id,
+      username: 'happy-path',
+    })
+  })
+})
