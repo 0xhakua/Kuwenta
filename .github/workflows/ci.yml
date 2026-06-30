@@ -71,6 +71,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        # `migrate deploy` does not generate the Prisma client; tests that
+        # import from `@prisma/client` need the generated `.prisma/client`
+        # module to exist first.
+        run: pnpm prisma generate
       - name: Apply migrations
         run: pnpm prisma migrate deploy
       - name: Run tests
