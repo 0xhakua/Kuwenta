@@ -16,6 +16,40 @@ async function main() {
     },
   })
 
+  // Reference data first — TaxpayerATC inserts below depend on the ATCCode
+  // rows existing (FK constraint). Inserting them in the wrong order fails
+  // with `Foreign key constraint violated: TaxpayerATC_atcCode_fkey`.
+  // See #107.
+
+  // ATC Codes
+  const atcCodes = [
+    { code: 'WI071', description: 'Insurance Agents & Adjusters', ewtRate: 0.10 },
+    { code: 'WI140', description: "Agent/Broker's Fees", ewtRate: 0.10 },
+    { code: 'WI100', description: 'Professional fees — lawyers, CPAs, engineers', ewtRate: 0.10 },
+    { code: 'WI160', description: 'Fees of directors who are not employees', ewtRate: 0.15 },
+  ]
+  for (const atc of atcCodes) {
+    await prisma.aTCCode.upsert({
+      where: { code: atc.code },
+      update: {},
+      create: atc,
+    })
+  }
+
+  // RDO Penalty Schedules (sample)
+  const rdoPenalties = [
+    { rdoCode: '040', compromiseFee: 500 },
+    { rdoCode: '044', compromiseFee: 500 },
+    { rdoCode: '050', compromiseFee: 1000 },
+  ]
+  for (const rdo of rdoPenalties) {
+    await prisma.rDOPenaltySchedule.upsert({
+      where: { rdoCode: rdo.rdoCode },
+      update: {},
+      create: rdo,
+    })
+  }
+
   // Test taxpayers
   const testUsers = [
     {
@@ -114,35 +148,6 @@ async function main() {
         profileData.incomeType
       )
     }
-  }
-
-  // ATC Codes
-  const atcCodes = [
-    { code: 'WI071', description: 'Insurance Agents & Adjusters', ewtRate: 0.10 },
-    { code: 'WI140', description: "Agent/Broker's Fees", ewtRate: 0.10 },
-    { code: 'WI100', description: 'Professional fees — lawyers, CPAs, engineers', ewtRate: 0.10 },
-    { code: 'WI160', description: 'Fees of directors who are not employees', ewtRate: 0.15 },
-  ]
-  for (const atc of atcCodes) {
-    await prisma.aTCCode.upsert({
-      where: { code: atc.code },
-      update: {},
-      create: atc,
-    })
-  }
-
-  // RDO Penalty Schedules (sample)
-  const rdoPenalties = [
-    { rdoCode: '040', compromiseFee: 500 },
-    { rdoCode: '044', compromiseFee: 500 },
-    { rdoCode: '050', compromiseFee: 1000 },
-  ]
-  for (const rdo of rdoPenalties) {
-    await prisma.rDOPenaltySchedule.upsert({
-      where: { rdoCode: rdo.rdoCode },
-      update: {},
-      create: rdo,
-    })
   }
 
   console.log('Seed complete.')
