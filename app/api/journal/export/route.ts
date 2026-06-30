@@ -49,7 +49,7 @@ export async function GET() {
       }))
     )
 
-    const buffer = exportJournalToBuffer(rows)
+    const buffer = await exportJournalToBuffer(rows)
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
