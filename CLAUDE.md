@@ -17,8 +17,11 @@ pnpm install
 # Start local services (PostgreSQL + MinIO)
 docker-compose up -d
 
-# Run migrations and seed test data
-pnpm prisma migrate dev
+# Run migrations and seed test data.
+# `migrate deploy` applies any pending migrations without creating a new
+# one — use this on every fresh clone and after every `git pull`.
+# `migrate dev` is only needed when you intentionally edit schema.prisma.
+pnpm prisma migrate deploy
 pnpm prisma db seed
 
 # Start dev server
