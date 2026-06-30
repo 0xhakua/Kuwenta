@@ -9,6 +9,7 @@ import {
   type SawtFormat,
   type SawtLineItem,
 } from '@/lib/sawt/format'
+import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
 
 const MONTHS = [
   'January',
@@ -71,7 +72,6 @@ export async function GET(req: NextRequest) {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: {
             certificates: {
               include: { atc: true },
@@ -82,11 +82,15 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    if (!profile?.taxYears[0]) {
+    if (!profile || profile.taxYears.length === 0) {
       return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
     }
 
-    const taxYear = profile.taxYears[0]
+    const taxYear = await resolveTaxYearFromRequest(req, profile.taxYears)
+    if (!taxYear) {
+      return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
+    }
+    await setActiveYearCookie(taxYear.year)
     const certificates = taxYear.certificates
 
     const aggregated = new Map<

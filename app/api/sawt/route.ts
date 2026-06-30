@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import Decimal from 'decimal.js'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
+import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +16,6 @@ export async function GET() {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: {
             certificates: {
               include: { atc: true },
@@ -26,11 +26,15 @@ export async function GET() {
       },
     })
 
-    if (!profile?.taxYears[0]) {
+    if (!profile || profile.taxYears.length === 0) {
       return NextResponse.json({ sawt: [] })
     }
 
-    const certificates = profile.taxYears[0].certificates
+    const taxYear = await resolveTaxYearFromRequest(request, profile.taxYears)
+    if (taxYear) {
+      await setActiveYearCookie(taxYear.year)
+    }
+    const certificates = taxYear?.certificates ?? []
 
     // BIR eSubmission alphalist aggregation: same payor + same ATC + same quarter → one line
     const aggregated = new Map<

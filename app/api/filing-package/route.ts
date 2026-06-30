@@ -4,8 +4,9 @@ import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { determineReturnStatus } from '@/lib/computation/sequence'
 import { buildAttachmentsChecklist } from '@/lib/filing-package/attachments'
+import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,7 +18,6 @@ export async function GET() {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: {
             certificates: true,
             priorYearCredit: true,
@@ -30,11 +30,15 @@ export async function GET() {
       },
     })
 
-    if (!profile?.taxYears[0]) {
+    if (!profile || profile.taxYears.length === 0) {
       return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
     }
 
-    const taxYear = profile.taxYears[0]
+    const taxYear = await resolveTaxYearFromRequest(request, profile.taxYears)
+    if (!taxYear) {
+      return NextResponse.json({ error: 'No active tax year' }, { status: 400 })
+    }
+    await setActiveYearCookie(taxYear.year)
 
     const totalGross = taxYear.certificates.reduce(
       (sum, c) => sum.plus(c.quarterlyTotal),
