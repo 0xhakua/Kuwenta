@@ -127,11 +127,13 @@ Consolidated Income Summary:
 
 Only accessible if Q1 2551Q has not yet been filed.
 
-- **Three valid election paths — system supports all three:**
+- **Three valid election methods — system supports all three:**
   1. **Item 13 on Q1 Form 2551Q** — standard path for taxpayers whose COR includes 2551Q
   2. **Item 16 on Q1 Form 1701Q** — valid alternative; applicable to taxpayers whose COR does NOT include 2551Q. For these users, the Q1 1701Q is the first (and only quarterly income tax) return, and Item 16 is where the election is declared. Legal basis: RR No. 8-2018 Sec. 3; RMC No. 32-2018; RMO No. 23-2018 Sec. 7.
-  3. **BIR Form 1905 (COR update)** — election via RDO; when recorded in system, pre-populates Item 13 or Item 16 accordingly.
-- System detects which path applies based on the COR 2551Q flag set during onboarding
+  3. **BIR Form 1905 (COR update)** — election via RDO; when recorded the system resolves the actual BIR line item (Item 13 or Item 16) from the COR-2551Q flag and stores it in `electionPath`. `electionMethod` is set to `FORM_1905` so the RDO-driven origin is preserved for audit.
+- System detects the default path based on the COR 2551Q flag set during onboarding
+- `electionPath` always stores the actual BIR line item (`ITEM_13_2551Q_Q1` or `ITEM_16_1701Q_Q1`)
+- `electionMethod` stores how the election was recorded (`ITEM_13_2551Q_Q1`, `ITEM_16_1701Q_Q1`, or `FORM_1905`)
 - Displays two rate options:
   - (A) Graduated Income Tax Rate on Net Taxable Income
   - (B) 8% Income Tax Rate on Gross Sales/Receipts/Others
@@ -141,7 +143,7 @@ Only accessible if Q1 2551Q has not yet been filed.
   3. BIR Form 1701A is the required annual return (or 1701 for mixed-income earners)
   4. Financial Statements are NOT required
 - User must check all four disclosures before confirming
-- Confirmation timestamped and logged to audit trail
+- Confirmation timestamped and logged to audit trail, including both `electionPath` and `electionMethod`
 - Once confirmed, election flag locked and cascaded to all return computations
 - If new taxable year begins, election resets to default (Graduated) and user is prompted to re-elect
 
