@@ -76,4 +76,35 @@ describe('POST /api/taxpayer', () => {
     expect(taxYear?.electionStatus).toBe('NOT_ELECTED')
     expect(taxYear?.electedRate).toBeNull()
   })
+
+  // Regression for #97: Zod's `error.format()` returns a nested
+  // `{ _errors, field: { _errors, ... } }` object. Rendering that object
+  // directly as a React child throws "Objects are not valid as a React
+  // child (found: object with keys {_errors, tin})". The API must return
+  // a flat, serializable shape.
+  it('returns a flat, serializable error body on validation failure (issue #97)', async () => {
+    await seedReferenceData()
+    const user = await createUser()
+
+    const req = await makeRequest(user.id, {
+      ...basePayload,
+      tin: '12345', // invalid: must match NNN-NNN-NNN-NNNN
+      atcCodes: [], // invalid: at least one required
+    })
+
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    // Top-level `error` is a plain string, never an object.
+    expect(typeof json.error).toBe('string')
+    // Field errors are flat string arrays keyed by field name.
+    expect(json.fieldErrors).toBeTypeOf('object')
+    expect(Array.isArray(json.fieldErrors.tin)).toBe(true)
+    expect(json.fieldErrors.tin[0]).toMatch(/NNN-NNN-NNN-NNNN/)
+    expect(Array.isArray(json.fieldErrors.atcCodes)).toBe(true)
+    // No nested `_errors` shape that would crash React.
+    expect(json).not.toHaveProperty('_errors')
+    expect(json.fieldErrors.tin).not.toHaveProperty('_errors')
+  })
 })

@@ -48,6 +48,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [atcCodes, setAtcCodes] = useState<ATCCode[]>([])
 
   const [form, setForm] = useState({
@@ -89,6 +90,7 @@ export default function OnboardingPage() {
   async function checkEligibility() {
     setLoading(true)
     setError('')
+    setFieldErrors({})
     try {
       const res = await fetch('/api/taxpayer/eligibility', {
         method: 'POST',
@@ -100,7 +102,7 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Eligibility check failed')
+        setError(extractErrorMessage(data, 'Eligibility check failed'))
         return
       }
       setEligibility(data)
@@ -115,6 +117,7 @@ export default function OnboardingPage() {
   async function submit() {
     setLoading(true)
     setError('')
+    setFieldErrors({})
     try {
       const res = await fetch('/api/taxpayer', {
         method: 'POST',
@@ -135,7 +138,10 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to complete onboarding')
+        setError(extractErrorMessage(data, 'Failed to complete onboarding'))
+        if (data && typeof data === 'object' && data.fieldErrors && typeof data.fieldErrors === 'object') {
+          setFieldErrors(data.fieldErrors as Record<string, string[]>)
+        }
         return
       }
       router.push('/dashboard')
@@ -144,6 +150,31 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function extractErrorMessage(data: unknown, fallback: string): string {
+    if (data && typeof data === 'object' && 'error' in data) {
+      const e = (data as { error: unknown }).error
+      if (typeof e === 'string') return e
+      // Defensive: API may have returned a non-string error shape; never render the
+      // raw object as a React child. Stringify the first readable message we find.
+      if (data && typeof data === 'object' && 'fieldErrors' in data) {
+        const fieldErrors = (data as { fieldErrors: unknown }).fieldErrors
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          const first = Object.values(fieldErrors as Record<string, unknown[]>).find(
+            (arr) => Array.isArray(arr) && arr.length > 0
+          )
+          if (Array.isArray(first) && typeof first[0] === 'string') return first[0]
+        }
+      }
+      if (e && typeof e === 'object') return fallback
+    }
+    return fallback
+  }
+
+  function fieldError(name: string): string | null {
+    const arr = fieldErrors[name]
+    return Array.isArray(arr) && arr.length > 0 ? arr[0] : null
   }
 
   function renderStep() {
@@ -160,6 +191,9 @@ export default function OnboardingPage() {
                   onChange={(e) => updateField('fullName', e.target.value)}
                   required
                 />
+                {fieldError('fullName') && (
+                  <p className="text-sm text-red-600">{fieldError('fullName')}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tin">TIN (NNN-NNN-NNN-NNNN)</Label>
@@ -170,6 +204,9 @@ export default function OnboardingPage() {
                   placeholder="000-000-000-0000"
                   required
                 />
+                {fieldError('tin') && (
+                  <p className="text-sm text-red-600">{fieldError('tin')}</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -316,6 +353,9 @@ export default function OnboardingPage() {
                 </div>
               ))}
             </div>
+            {fieldError('atcCodes') && (
+              <p className="text-sm text-red-600">{fieldError('atcCodes')}</p>
+            )}
           </div>
         )
       case 3:
@@ -330,6 +370,9 @@ export default function OnboardingPage() {
                 onChange={(e) => updateField('taxYear', Number(e.target.value))}
                 required
               />
+              {fieldError('taxYear') && (
+                <p className="text-sm text-red-600">{fieldError('taxYear')}</p>
+              )}
             </div>
             <div className="rounded-md border p-4 text-sm">
               <p className="font-medium">Filing sequence preview:</p>
