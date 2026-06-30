@@ -437,7 +437,6 @@ GET    /api/journal/accounts             — List all chart of accounts used in 
 ### Stellar Integration
 ```
 GET    /api/stellar/receipts         — List all on-chain filing records for current taxpayer
-GET    /api/stellar/receipts/[txId]  — Get single receipt with verification details
 POST   /api/stellar/anchor           — Anchor a filing event on Stellar (called by /file endpoint)
 GET    /api/stellar/verify/[txId]    — Verify a TX ID against Stellar ledger
 GET    /api/stellar/status           — Stellar network connection health check
