@@ -29,6 +29,7 @@ export async function createTaxpayerProfile(
     natureOfBusiness: string
     incomeType: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME'
     corIncludes2551Q: boolean
+    isNewRegistrant: boolean
   }> = {}
 ) {
   return prisma.taxpayerProfile.create({
@@ -42,6 +43,7 @@ export async function createTaxpayerProfile(
       natureOfBusiness: overrides.natureOfBusiness ?? 'Consulting',
       incomeType: overrides.incomeType ?? 'PURE_SELF_EMPLOYMENT',
       corIncludes2551Q: overrides.corIncludes2551Q ?? true,
+      isNewRegistrant: overrides.isNewRegistrant ?? false,
     },
   })
 }
@@ -68,12 +70,14 @@ export async function createTaxpayerWithYear(overrides: {
   year?: number
   incomeType?: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME'
   corIncludes2551Q?: boolean
+  isNewRegistrant?: boolean
   electedRate?: 'RATE_8PCT' | 'GRADUATED' | null
 } = {}) {
   const user = await createUser()
   const profile = await createTaxpayerProfile(user.id, {
     incomeType: overrides.incomeType,
     corIncludes2551Q: overrides.corIncludes2551Q,
+    isNewRegistrant: overrides.isNewRegistrant,
   })
   const taxYear = await createTaxYear(profile.id, overrides.year ?? 2026, {
     electedRate: overrides.electedRate,
@@ -83,7 +87,8 @@ export async function createTaxpayerWithYear(overrides: {
     overrides.year ?? 2026,
     overrides.corIncludes2551Q ?? true,
     [],
-    prisma
+    prisma,
+    overrides.isNewRegistrant ?? false
   )
   return { user, profile, taxYear }
 }

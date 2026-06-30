@@ -59,6 +59,7 @@ export default function OnboardingPage() {
     natureOfBusiness: '',
     incomeType: 'PURE_SELF_EMPLOYMENT',
     corIncludes2551Q: 'true',
+    isNewRegistrant: 'false',
     selectedAtcCodes: [] as string[],
     taxYear: new Date().getFullYear(),
   })
@@ -127,6 +128,7 @@ export default function OnboardingPage() {
           natureOfBusiness: form.natureOfBusiness,
           incomeType: form.incomeType,
           corIncludes2551Q: form.corIncludes2551Q === 'true',
+          isNewRegistrant: form.isNewRegistrant === 'true',
           atcCodes: form.selectedAtcCodes,
           taxYear: form.taxYear,
         }),
@@ -238,6 +240,29 @@ export default function OnboardingPage() {
                   <Label htmlFor="cor-no" className="font-normal">No — 4-return filing path (1701Q only)</Label>
                 </div>
               </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label>Are you a new BIR registrant?</Label>
+              <RadioGroup
+                value={form.isNewRegistrant}
+                onValueChange={(value) => updateField('isNewRegistrant', value)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="true" id="new-reg-yes" />
+                  <Label htmlFor="new-reg-yes" className="font-normal">
+                    Yes — elected 8% on Form 1901 at initial registration
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="false" id="new-reg-no" />
+                  <Label htmlFor="new-reg-no" className="font-normal">
+                    No — election must be made via 2551Q/1701Q Item or Form 1905
+                  </Label>
+                </div>
+              </RadioGroup>
+              <p className="text-sm text-muted-foreground">
+                Annual registration fee: ₱30 Documentary Stamp Tax only. The ₱500 BIR registration fee was abolished under RA 11976.
+              </p>
             </div>
           </div>
         )

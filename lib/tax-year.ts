@@ -18,7 +18,8 @@ export async function initializeTaxYear(
   year: number,
   corIncludes2551Q: boolean,
   holidays: Date[] = [],
-  tx: TransactionClient = prisma
+  tx: TransactionClient = prisma,
+  isNewRegistrant: boolean = false
 ) {
   const taxYear = await tx.taxYear.upsert({
     where: {
@@ -31,6 +32,14 @@ export async function initializeTaxYear(
     create: {
       taxpayerId,
       year,
+      // BR-18: taxpayers who elected 8% on Form 1901 at initial BIR
+      // registration are pre-confirmed; no Item 13 / Item 16 election needed.
+      ...(isNewRegistrant && {
+        electionStatus: 'ELECTED_8PCT',
+        electedRate: 'RATE_8PCT',
+        electionDate: new Date(),
+        electionLockedAt: new Date(),
+      }),
     },
   })
 
