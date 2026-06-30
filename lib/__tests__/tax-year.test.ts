@@ -3,9 +3,15 @@ import { prisma } from '../prisma'
 import { initializeTaxYear } from '../tax-year'
 import { createTaxpayerProfile, createUser, seedReferenceData } from '../testing/factories'
 
-async function createTaxpayer(corIncludes2551Q: boolean) {
+async function createTaxpayer(
+  corIncludes2551Q: boolean,
+  incomeType: 'PURE_SELF_EMPLOYMENT' | 'MIXED_INCOME' = 'PURE_SELF_EMPLOYMENT'
+) {
   const user = await createUser()
-  const profile = await createTaxpayerProfile(user.id, { corIncludes2551Q })
+  const profile = await createTaxpayerProfile(user.id, {
+    corIncludes2551Q,
+    incomeType,
+  })
   return { user, profile }
 }
 
@@ -35,6 +41,23 @@ describe('initializeTaxYear', () => {
     expect(taxYear.returns.map((r) => r.sequenceOrder)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
   })
 
+  it('creates Form 1701 as the annual return for mixed-income earners (8-return path)', async () => {
+    await seedReferenceData()
+    const { profile } = await createTaxpayer(true, 'MIXED_INCOME')
+
+    await initializeTaxYear(profile.id, 2026, true, [], prisma, false, 'MIXED_INCOME')
+
+    const taxYear = await prisma.taxYear.findUniqueOrThrow({
+      where: { taxpayerId_year: { taxpayerId: profile.id, year: 2026 } },
+      include: { returns: { orderBy: { sequenceOrder: 'asc' } } },
+    })
+
+    expect(taxYear.returns).toHaveLength(8)
+    const annual = taxYear.returns.find((r) => r.sequenceOrder === 8)
+    expect(annual?.formType).toBe('FORM_1701')
+    expect(annual?.quarter).toBeNull()
+  })
+
   it('creates a 4-return slot set when COR does NOT include 2551Q', async () => {
     await seedReferenceData()
     const { profile } = await createTaxpayer(false)
@@ -54,6 +77,22 @@ describe('initializeTaxYear', () => {
       'FORM_1701A:null',
     ])
     expect(taxYear.returns.map((r) => r.sequenceOrder)).toEqual([1, 2, 3, 4])
+  })
+
+  it('creates Form 1701 on the 4-return path for mixed-income earners', async () => {
+    await seedReferenceData()
+    const { profile } = await createTaxpayer(false, 'MIXED_INCOME')
+
+    await initializeTaxYear(profile.id, 2026, false, [], prisma, false, 'MIXED_INCOME')
+
+    const taxYear = await prisma.taxYear.findUniqueOrThrow({
+      where: { taxpayerId_year: { taxpayerId: profile.id, year: 2026 } },
+      include: { returns: { orderBy: { sequenceOrder: 'asc' } } },
+    })
+
+    expect(taxYear.returns).toHaveLength(4)
+    const annual = taxYear.returns.find((r) => r.sequenceOrder === 4)
+    expect(annual?.formType).toBe('FORM_1701')
   })
 
   it('is idempotent: a second call does not duplicate slots', async () => {

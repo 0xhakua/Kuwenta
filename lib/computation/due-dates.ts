@@ -1,4 +1,4 @@
-import { STATUTORY_DUE_DATES } from './constants'
+import { STATUTORY_DUE_DATES, type FormTypeValue, type IncomeTypeValue } from './constants'
 
 /**
  * Roll a due date forward to the next business day if it falls on a weekend
@@ -49,15 +49,17 @@ export function getStatutoryDueDate(formType: string, quarter: number | null, ye
 export function getDueDatesForYear(
   year: number,
   corIncludes2551Q: boolean,
-  holidays: Date[]
+  holidays: Date[],
+  incomeType: IncomeTypeValue = 'PURE_SELF_EMPLOYMENT'
 ): Array<{
-  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+  formType: FormTypeValue
   quarter: number | null
   statutoryDueDate: Date
   adjustedDueDate: Date
 }> {
+  const annualForm: FormTypeValue = incomeType === 'MIXED_INCOME' ? 'FORM_1701' : 'FORM_1701A'
   const returns: Array<{
-    formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+    formType: FormTypeValue
     quarter: number | null
   }> = corIncludes2551Q
     ? [
@@ -68,13 +70,13 @@ export function getDueDatesForYear(
         { formType: 'FORM_1701Q', quarter: 1 },
         { formType: 'FORM_1701Q', quarter: 2 },
         { formType: 'FORM_1701Q', quarter: 3 },
-        { formType: 'FORM_1701A', quarter: null },
+        { formType: annualForm, quarter: null },
       ]
     : [
         { formType: 'FORM_1701Q', quarter: 1 },
         { formType: 'FORM_1701Q', quarter: 2 },
         { formType: 'FORM_1701Q', quarter: 3 },
-        { formType: 'FORM_1701A', quarter: null },
+        { formType: annualForm, quarter: null },
       ]
 
   return returns.map((r) => {

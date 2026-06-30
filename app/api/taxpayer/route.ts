@@ -128,7 +128,8 @@ export async function POST(req: NextRequest) {
         data.corIncludes2551Q,
         holidays.map((h) => h.date),
         tx,
-        data.isNewRegistrant
+        data.isNewRegistrant,
+        data.incomeType
       )
 
       return created

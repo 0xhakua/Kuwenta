@@ -129,8 +129,10 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
     quarterlyPaymentsCash = quarterlyPaymentsCash.plus(netTaxDue)
   }
 
-  // Recompute 1701A annual return
-  const annualReturn = taxYear.returns.find((r) => r.formType === 'FORM_1701A')
+  // Recompute 1701A / 1701 annual return
+  const annualReturn = taxYear.returns.find(
+    (r) => r.formType === 'FORM_1701A' || r.formType === 'FORM_1701'
+  )
   if (annualReturn) {
     if (!useEightPctComputation) {
       await db.taxReturn.update({

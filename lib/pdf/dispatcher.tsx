@@ -5,12 +5,13 @@ import { prisma } from '@/lib/prisma'
 import { Form2551Q } from './templates/form-2551q'
 import { Form1701Q } from './templates/form-1701q'
 import { Form1701A } from './templates/form-1701a'
+import { Form1701 } from './templates/form-1701'
 import { ReturnPdf } from './return-pdf'
 
 export interface FilingPdfData {
   ret: {
     id: string
-    formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+    formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A' | 'FORM_1701'
     quarter: number | null
     status: string
     computedTaxDue: Decimal | null
@@ -50,7 +51,7 @@ export interface FilingPdfData {
   priorYearCredit: { amount: Decimal } | null
   overpayment: { disposition: string | null } | null
   allReturns: Array<{
-    formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+    formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A' | 'FORM_1701'
     quarter: number | null
     netTaxDue: Decimal | null
   }>
@@ -146,6 +147,8 @@ export function FilingPdfElement(data: FilingPdfData): React.ReactElement<Docume
       return <Form1701Q data={data} />
     case 'FORM_1701A':
       return <Form1701A data={data} />
+    case 'FORM_1701':
+      return <Form1701 data={data} />
     default:
       return (
         <ReturnPdf

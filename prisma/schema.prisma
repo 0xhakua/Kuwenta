@@ -150,6 +150,7 @@ enum FormType {
   FORM_2551Q
   FORM_1701Q
   FORM_1701A
+  FORM_1701
 }
 
 enum ReturnStatus {

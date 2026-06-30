@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     if (explicitQueryYear && Number.parseInt(explicitQueryYear, 10) === activeYear) {
       await setActiveYearCookie(activeYear)
     }
-    const sequence = getSequence(profile.corIncludes2551Q)
+    const sequence = getSequence(profile.corIncludes2551Q, profile.incomeType)
 
     const totalGross = taxYear.certificates.reduce(
       (sum, cert) => sum.plus(cert.quarterlyTotal),

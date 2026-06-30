@@ -58,6 +58,14 @@ export async function POST(
       return NextResponse.json({ error: 'Return already filed' }, { status: 409 })
     }
 
+    // Mixed-income earners must file Form 1701, not 1701A
+    if (ret.formType === 'FORM_1701A' && profile.incomeType === 'MIXED_INCOME') {
+      return NextResponse.json(
+        { error: 'Mixed-income earners must use Form 1701 as the annual return' },
+        { status: 409 }
+      )
+    }
+
     // Ensure computations are up to date before generating
     await recascadeTaxYear({ taxYearId: taxYear.id })
 
