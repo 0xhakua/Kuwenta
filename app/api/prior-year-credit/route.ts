@@ -8,6 +8,8 @@ import {
   generateOverpaymentJournal,
   generatePriorYearCreditJournal,
 } from '@/lib/journal/generator'
+import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
+import { buildLineage, type LineageCredit } from '@/lib/prior-year-credit-lineage'
 
 const createSchema = z.object({
   amount: z.union([z.string(), z.number()]).transform((v) => String(v)),
@@ -16,7 +18,7 @@ const createSchema = z.object({
   priorDisposition: z.string().min(1),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,18 +30,43 @@ export async function GET() {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: { priorYearCredit: true },
         },
       },
     })
 
-    if (!profile?.taxYears[0]) {
-      return NextResponse.json({ priorYearCredit: null })
+    if (!profile || profile.taxYears.length === 0) {
+      return NextResponse.json({ priorYearCredit: null, lineage: [] })
     }
 
+    const taxYear = await resolveTaxYearFromRequest(request, profile.taxYears)
+    if (taxYear) {
+      await setActiveYearCookie(taxYear.year)
+    }
+    if (!taxYear) {
+      return NextResponse.json({ priorYearCredit: null, lineage: [] })
+    }
+
+    const creditsByYear = new Map<number, LineageCredit>()
+    for (const ty of profile.taxYears) {
+      if (ty.priorYearCredit) {
+        creditsByYear.set(ty.year, {
+          id: ty.priorYearCredit.id,
+          taxYearId: ty.id,
+          taxYear: ty.year,
+          amount: String(ty.priorYearCredit.amount),
+          originYear: ty.priorYearCredit.originYear,
+          originForm: ty.priorYearCredit.originForm,
+          priorDisposition: ty.priorYearCredit.priorDisposition,
+        })
+      }
+    }
+
+    const lineage = buildLineage(taxYear.year, creditsByYear)
+
     return NextResponse.json({
-      priorYearCredit: profile.taxYears[0].priorYearCredit,
+      priorYearCredit: taxYear.priorYearCredit,
+      lineage,
     })
   } catch (err) {
     console.error('Get prior-year credit error:', err)
