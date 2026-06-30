@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { extractApiErrorMessage } from '@/lib/api-error'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -153,23 +154,10 @@ export default function OnboardingPage() {
   }
 
   function extractErrorMessage(data: unknown, fallback: string): string {
-    if (data && typeof data === 'object' && 'error' in data) {
-      const e = (data as { error: unknown }).error
-      if (typeof e === 'string') return e
-      // Defensive: API may have returned a non-string error shape; never render the
-      // raw object as a React child. Stringify the first readable message we find.
-      if (data && typeof data === 'object' && 'fieldErrors' in data) {
-        const fieldErrors = (data as { fieldErrors: unknown }).fieldErrors
-        if (fieldErrors && typeof fieldErrors === 'object') {
-          const first = Object.values(fieldErrors as Record<string, unknown[]>).find(
-            (arr) => Array.isArray(arr) && arr.length > 0
-          )
-          if (Array.isArray(first) && typeof first[0] === 'string') return first[0]
-        }
-      }
-      if (e && typeof e === 'object') return fallback
-    }
-    return fallback
+    // Prefer a specific field/form error over the API's generic "Validation failed"
+    // placeholder so the user sees *what* to fix in the toast, not just that
+    // something is wrong.
+    return extractApiErrorMessage(data, fallback)
   }
 
   function fieldError(name: string): string | null {
