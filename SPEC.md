@@ -349,9 +349,8 @@ GET    /api/taxpayer/eligibility — Run eligibility check, return pass/fail per
 ### ATC Codes
 ```
 GET    /api/atc                 — List all active ATC codes
-GET    /api/atc/[code]          — Get single ATC with rate and description
-POST   /api/atc                 — Admin: create ATC code
-PUT    /api/atc/[code]          — Admin: update ATC code
+GET    /api/atc/[code]          — Get single ATC (rate + description + isActive)
+POST   /api/atc                 — Admin: create ATC code (canonical update path is PATCH /api/admin/atc — see below)
 ```
 
 ### Form 2307 Certificates
@@ -442,10 +441,12 @@ GET    /api/admin/users              — List all users
 GET    /api/admin/audit-log          — Get audit log entries (filterable)
 GET    /api/admin/atc                — List all ATC codes including inactive
 POST   /api/admin/atc                — Create ATC code
-PUT    /api/admin/atc/[code]         — Update ATC code
+PATCH  /api/admin/atc                — Update ATC code (canonical update path; body: { code, description?, ewtRate?, isActive? })
+DELETE /api/admin/atc                — Delete ATC code (body: { code })
 GET    /api/admin/holidays           — List holiday calendar entries
 POST   /api/admin/holidays           — Add holiday
 PUT    /api/admin/penalties/rdo      — Update compromise penalty schedule by RDO
+GET    /api/admin/system-health      — Aggregate Stellar + storage + DB health
 ```
 
 ---
