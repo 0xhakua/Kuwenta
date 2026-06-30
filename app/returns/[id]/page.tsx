@@ -23,7 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { PageHeader } from '@/components/ui/page-header'
+import { PageShell } from '@/components/ui/page-shell'
 import { formatPeso, formatDate } from '@/lib/format'
+import { ArrowLeft, FileText, RefreshCw } from 'lucide-react'
 
 type Money = { raw: string; formatted: string }
 
@@ -219,15 +222,15 @@ export default function ReturnDetailPage() {
     }
   }, [id])
 
-  function statusColor(status: string) {
+  function statusIntent(status: string) {
     switch (status) {
       case 'FILED':
-        return 'bg-green-100 text-green-800'
+        return 'status-success'
       case 'PENDING':
       case 'GENERATED':
-        return 'bg-amber-100 text-amber-800'
+        return 'status-warning'
       default:
-        return 'bg-red-100 text-red-800'
+        return 'status-danger'
     }
   }
 
@@ -333,25 +336,51 @@ export default function ReturnDetailPage() {
   }
 
   if (!ret) {
-    return <p className="p-6">Loading return...</p>
+    return (
+      <PageShell>
+        <PageHeader title="Return" description="Loading return…" />
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Loading return…
+          </CardContent>
+        </Card>
+      </PageShell>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/returns">
-            <Button variant="outline" size="sm">← Back to Returns</Button>
-          </Link>
-          <h1 className="text-2xl font-bold mt-2">
+    <PageShell>
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
             {ret.formType.replace('FORM_', '')} {ret.quarter ? `Q${ret.quarter}` : 'Annual'}
-          </h1>
-        </div>
-        <Badge className={statusColor(ret.status)}>{ret.status}</Badge>
-      </div>
+          </span>
+        }
+        description={
+          <>
+            Statutory due date {formatDate(ret.statutoryDueDate)}
+            {ret.filedDate ? ` · Filed on ${formatDate(ret.filedDate)}` : ''}
+          </>
+        }
+        actions={
+          <>
+            <Badge className={statusIntent(ret.status)}>{ret.status}</Badge>
+            <Link href="/returns">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Returns
+              </Button>
+            </Link>
+          </>
+        }
+      />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {message && <p className="text-sm text-green-600">{message}</p>}
+      {error ? (
+        <div className="status-danger rounded-md px-4 py-3 text-sm">{error}</div>
+      ) : null}
+      {message ? (
+        <div className="status-success rounded-md px-4 py-3 text-sm">{message}</div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -770,9 +799,14 @@ export default function ReturnDetailPage() {
           onClick={recalculate}
           disabled={recalcLoading || ret.status === 'FILED'}
         >
-          {recalcLoading ? 'Recalculating…' : 'Recalculate'}
+          {recalcLoading ? (
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Recalculate
         </Button>
       </div>
-    </div>
+    </PageShell>
   )
 }
