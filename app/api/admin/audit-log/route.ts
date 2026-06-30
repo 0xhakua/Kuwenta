@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
+import { hasFilterError } from '@/lib/journal/query'
 
 const MAX_LIMIT = 1000
 const DEFAULT_LIMIT = 500
@@ -46,13 +47,13 @@ export async function GET(req: Request) {
     const to = parseDate(url.searchParams.get('to'))
     const limit = parseLimit(url.searchParams.get('limit'))
 
-    if ('error' in from) {
+    if (hasFilterError(from)) {
       return NextResponse.json({ error: from.error }, { status: 400 })
     }
-    if ('error' in to) {
+    if (hasFilterError(to)) {
       return NextResponse.json({ error: to.error }, { status: 400 })
     }
-    if ('error' in limit) {
+    if (hasFilterError(limit)) {
       return NextResponse.json({ error: limit.error }, { status: 400 })
     }
 

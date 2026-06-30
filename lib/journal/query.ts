@@ -44,6 +44,12 @@ export function parseAccountNameFilter(
   return trimmed.length > 0 ? trimmed : null
 }
 
+export function hasFilterError(
+  value: unknown
+): value is { error: string } {
+  return value !== null && typeof value === 'object' && 'error' in value
+}
+
 const VALID_SUBSECTIONS = new Set(['9A', '9B', '9C', '9D', '9E', '9F', '9G'])
 
 export function parseSubsectionFilter(
