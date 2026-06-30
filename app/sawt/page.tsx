@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileDown, Package, ClipboardList } from 'lucide-react'
+import { FileDown, Package, ClipboardList, Copy, Check } from 'lucide-react'
 
 type SawtRow = {
   quarter: number
@@ -24,6 +24,13 @@ type ReturnMeta = {
   label: string
   status: string
   stellarTxId: string | null
+  penalties: {
+    daysLate: number
+    surcharge: string
+    interest: string
+    compromisePenalty: string
+    totalPenalty: string
+  } | null
 }
 
 type Attachment = {
@@ -33,8 +40,17 @@ type Attachment = {
 
 type FilingPackage = {
   taxYear: number
+  taxpayer: {
+    fullName: string
+    tin: string
+    rdoCode: string
+    registeredAddress: string
+    zipCode: string
+  }
+  electedRate: 'RATE_8PCT' | 'GRADUATED' | null
   totalGross: string
   totalCwt: string
+  totalPenalty: string
   filedCount: number
   totalCount: number
   returns: ReturnMeta[]
@@ -47,19 +63,23 @@ export default function SawtPage() {
   const [tab, setTab] = useState<Tab>('sawt')
   const [sawt, setSawt] = useState<SawtRow[]>([])
   const [pkg, setPkg] = useState<FilingPackage | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     async function fetchData() {
       try {
-        const [sawtRes, pkgRes] = await Promise.all([
+        const [sawtRes, pkgRes, attRes] = await Promise.all([
           fetch('/api/sawt'),
           fetch('/api/filing-package'),
+          fetch('/api/sawt/attachments'),
         ])
         const sawtJson = await sawtRes.json()
         const pkgJson = await pkgRes.json()
+        const attJson = await attRes.json()
         if (cancelled) return
         if (!sawtRes.ok) {
           setError(sawtJson.error || 'Failed to load SAWT')
@@ -69,8 +89,13 @@ export default function SawtPage() {
           setError(pkgJson.error || 'Failed to load filing package')
           return
         }
+        if (!attRes.ok) {
+          setError(attJson.error || 'Failed to load attachments checklist')
+          return
+        }
         setSawt(sawtJson.sawt || [])
         setPkg(pkgJson)
+        setAttachments(attJson.attachments || [])
       } catch {
         if (!cancelled) setError('Failed to load SAWT data')
       } finally {
@@ -100,6 +125,21 @@ export default function SawtPage() {
           <p className="text-muted-foreground">Tax Year {pkg?.taxYear}</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await navigator.clipboard.writeText('csubmission@bir.gov.ph')
+              setCopied(true)
+              setTimeout(() => setCopied(false), 2000)
+            }}
+          >
+            {copied ? (
+              <><Check className="mr-2 h-4 w-4" /> Copied</>
+            ) : (
+              <><Copy className="mr-2 h-4 w-4" /> Copy BIR Email</>
+            )}
+          </Button>
           <Link href="/api/sawt/export?format=dat">
             <Button variant="outline" size="sm">
               <FileDown className="mr-2 h-4 w-4" /> Download SAWT DAT
@@ -177,14 +217,14 @@ export default function SawtPage() {
         </Card>
       )}
 
-      {tab === 'attachments' && pkg && (
+      {tab === 'attachments' && (
         <Card>
           <CardHeader>
             <CardTitle>Attachments Checklist</CardTitle>
             <CardDescription>Status of required supporting documents.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {pkg.attachments.map((att, idx) => (
+            {attachments.map((att, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <span>{att.name}</span>
                 <Badge className={statusColor(att.status)}>{att.status}</Badge>
@@ -216,6 +256,99 @@ export default function SawtPage() {
               </CardHeader>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cover Sheet Preview</CardTitle>
+              <CardDescription>
+                Information included in the downloadable filing package ZIP.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Taxpayer</p>
+                  <p className="font-medium">{pkg.taxpayer.fullName}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">TIN</p>
+                  <p className="font-medium">{pkg.taxpayer.tin}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">RDO</p>
+                  <p className="font-medium">{pkg.taxpayer.rdoCode}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Rate Election</p>
+                  <p className="font-medium">
+                    {pkg.electedRate === 'RATE_8PCT' ? '8% Flat Rate' : 'Graduated Rate'}
+                  </p>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <p className="text-sm text-muted-foreground">Address</p>
+                  <p className="font-medium">{pkg.taxpayer.registeredAddress} {pkg.taxpayer.zipCode}</p>
+                </div>
+              </div>
+              <hr />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Gross Receipts</p>
+                  <p className="font-semibold">₱{Number(pkg.totalGross).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total CWT Withheld</p>
+                  <p className="font-semibold">₱{Number(pkg.totalCwt).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Penalties</p>
+                  <p className="font-semibold">₱{Number(pkg.totalPenalty).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Penalty Summary</CardTitle>
+              <CardDescription>Late-filing penalties computed per return.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Return</TableHead>
+                    <TableHead className="text-right">Days Late</TableHead>
+                    <TableHead className="text-right">Surcharge</TableHead>
+                    <TableHead className="text-right">Interest</TableHead>
+                    <TableHead className="text-right">Compromise</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pkg.returns.map((ret) => (
+                    <TableRow key={ret.id}>
+                      <TableCell>{ret.label}</TableCell>
+                      <TableCell className="text-right">
+                        {ret.penalties?.daysLate ?? 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₱{Number(ret.penalties?.surcharge ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₱{Number(ret.penalties?.interest ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₱{Number(ret.penalties?.compromisePenalty ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ₱{Number(ret.penalties?.totalPenalty ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
