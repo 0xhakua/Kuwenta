@@ -808,18 +808,23 @@ When a return is marked as filed (`POST /api/returns/[id]/file`):
 
 1. System generates the return PDF and stores it in Railway Volume
 2. SHA-256 hash of the PDF bytes is computed
-3. A Stellar `manageData` operation is submitted to testnet:
+3. Two Stellar `manageData` operations are submitted in a single transaction:
    - Key: `kuwenta:ph:${returnId}` (truncated to 64 chars)
-   - Value: `${sha256hash}:${filedDate.toISOString()}`
+     - Value: the 64-character SHA-256 hex hash
+   - Key: `kuwenta:ts:${returnId}` (truncated to 64 chars)
+     - Value: `filedDate.toISOString()`
+   
+   The hash and timestamp are split because a single 64-byte manageData value
+   cannot hold a 64-character hex hash plus an ISO timestamp.
 4. Transaction is signed using the system's Stellar keypair (env: `STELLAR_SECRET_KEY`)
-5. TX ID and hash stored in `StellarReceipt` table
+5. TX ID, hash, and timestamp stored in `StellarReceipt` table
 6. Explorer URL: `https://stellar.expert/explorer/testnet/tx/{txId}`
 
 ### Verification Flow
 
 Anyone with a TX ID can:
-1. Look up the TX on Stellar explorer
-2. Read the `manageData` payload (hash + timestamp)
+1. Look up the TX on Stellar explorer or via Horizon
+2. Read both `manageData` operations (hash under `kuwenta:ph:*`, timestamp under `kuwenta:ts:*`)
 3. Compare hash against the original PDF (if available)
 
 ### Environment Variables

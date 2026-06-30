@@ -14,6 +14,15 @@ export interface AnchorResult {
   status: 'PENDING' | 'CONFIRMED' | 'FAILED'
 }
 
+export interface ParsedAnchorPayload {
+  payloadHash: string
+  filedDate: string
+}
+
+const HASH_KEY_PREFIX = 'kuwenta:ph:'
+const TIMESTAMP_KEY_PREFIX = 'kuwenta:ts:'
+const MANAGE_DATA_NAME_MAX_BYTES = 64
+
 function getExplorerUrl(txId: string): string {
   const network = process.env.STELLAR_NETWORK === 'mainnet' ? 'public' : 'testnet'
   return `https://stellar.expert/explorer/${network}/tx/${txId}`
@@ -23,13 +32,95 @@ function computePayloadHash(pdfBuffer: Buffer): string {
   return crypto.createHash('sha256').update(pdfBuffer).digest('hex')
 }
 
+function buildDataKey(prefix: string, returnId: string): string {
+  const key = `${prefix}${returnId}`
+  if (Buffer.byteLength(key, 'utf8') <= MANAGE_DATA_NAME_MAX_BYTES) {
+    return key
+  }
+  // Truncate to the byte limit; simple ASCII slice is safe for our prefixes/CUIDs.
+  return key.slice(0, MANAGE_DATA_NAME_MAX_BYTES)
+}
+
+function assertHashHex(value: string): void {
+  if (!/^[a-f0-9]{64}$/i.test(value)) {
+    throw new Error('payloadHash must be a 64-character lower/upper-case hex string')
+  }
+}
+
 /**
- * Anchor a filing receipt on Stellar using a manageData operation.
+ * Encode the anchor payload into two Stellar manageData values.
  *
- * The key is prefixed with `kuwenta:ph:` and truncated to 64 bytes, as required
- * by the Stellar manageData name limit. The value combines the SHA-256 hash of
- * the filing PDF with the ISO filing timestamp and is also truncated to 64
- * bytes.
+ * Stellar manageData values are limited to 64 bytes each. A SHA-256 hex string
+ * alone is exactly 64 bytes, so we store it in a dedicated entry and write the
+ * ISO filing timestamp to a second entry. Both keys share the same returnId so
+ * verification can pair them.
+ */
+export function encodeAnchorPayload(
+  returnId: string,
+  payloadHash: string,
+  filedDate: string
+): { hashKey: string; hashValue: string; timestampKey: string; timestampValue: string } {
+  assertHashHex(payloadHash)
+  if (Number.isNaN(Date.parse(filedDate))) {
+    throw new Error('filedDate must be a valid ISO timestamp')
+  }
+  return {
+    hashKey: buildDataKey(HASH_KEY_PREFIX, returnId),
+    hashValue: payloadHash,
+    timestampKey: buildDataKey(TIMESTAMP_KEY_PREFIX, returnId),
+    timestampValue: filedDate,
+  }
+}
+
+/**
+ * Recover the payload hash and filing timestamp from manageData operations.
+ *
+ * Accepts either Stellar SDK operation objects (value as Buffer) or Horizon
+ * JSON operations (value as base64 string).
+ */
+export function parseAnchorOperations(
+  operations: ReadonlyArray<{ type?: string; name?: string; value?: Buffer | string }>
+): ParsedAnchorPayload | null {
+  const decodeValue = (raw: Buffer | string | undefined): string | null => {
+    if (raw === undefined || raw === null) return null
+    if (Buffer.isBuffer(raw)) return raw.toString('utf8')
+    if (typeof raw === 'string') {
+      // Horizon returns manageData values as base64 strings.
+      try {
+        return Buffer.from(raw, 'base64').toString('utf8')
+      } catch {
+        return raw
+      }
+    }
+    return null
+  }
+
+  let payloadHash: string | null = null
+  let filedDate: string | null = null
+
+  for (const op of operations) {
+    if (op.type !== 'manageData') continue
+    const name = op.name ?? ''
+    const value = decodeValue(op.value)
+    if (value === null) continue
+
+    if (name.startsWith(HASH_KEY_PREFIX)) {
+      payloadHash = value
+    } else if (name.startsWith(TIMESTAMP_KEY_PREFIX)) {
+      filedDate = value
+    }
+  }
+
+  if (!payloadHash || !filedDate) return null
+  return { payloadHash, filedDate }
+}
+
+/**
+ * Anchor a filing receipt on Stellar using two manageData operations.
+ *
+ * The hash is stored under `kuwenta:ph:{returnId}` and the ISO filing
+ * timestamp under `kuwenta:ts:{returnId}`. Splitting the data avoids the
+ * 64-byte value limit that previously truncated the timestamp off the hash.
  *
  * A Stellar failure must NOT prevent the return from being marked as filed.
  * This function catches all Stellar errors and returns a FAILED status so the
@@ -46,8 +137,8 @@ export async function anchorFilingReceipt(
     const account = await horizon.loadAccount(keypair.publicKey())
 
     const filedDate = new Date().toISOString()
-    const dataKey = `kuwenta:ph:${returnId}`.substring(0, 64)
-    const dataValue = `${payloadHash}:${filedDate}`.substring(0, 64)
+    const hashKey = buildDataKey(HASH_KEY_PREFIX, returnId)
+    const timestampKey = buildDataKey(TIMESTAMP_KEY_PREFIX, returnId)
 
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
@@ -55,8 +146,14 @@ export async function anchorFilingReceipt(
     })
       .addOperation(
         Operation.manageData({
-          name: dataKey,
-          value: dataValue,
+          name: hashKey,
+          value: payloadHash,
+        })
+      )
+      .addOperation(
+        Operation.manageData({
+          name: timestampKey,
+          value: filedDate,
         })
       )
       .setTimeout(60)
