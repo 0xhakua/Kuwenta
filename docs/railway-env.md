@@ -3,7 +3,7 @@
 The staging deployment at `https://krunchr-staging.up.railway.app/` reads
 configuration from environment variables. All of them must be present in
 Railway's "Variables" tab before the service will start correctly. Missing
-or wrong values usually show up as a 500 on `POST /api/auth/login` because
+or wrong values usually show up as a 503 on `POST /api/auth/login` because
 the login route is the first request that touches the database.
 
 | Variable | Required | Example | Notes |
@@ -55,3 +55,45 @@ pnpm prisma migrate deploy
 
 so the database schema is up to date the first time a request lands on a
 new deploy. Migrations live in `prisma/migrations/` and are append-only.
+
+## If you see `POST /api/auth/login 503 DB_UNAVAILABLE`
+
+The structured error from #104 is doing its job — Prisma threw on the
+user lookup. Three things to check, in order:
+
+1. **Open `https://krunchr-staging.up.railway.app/api/health`** in a
+   browser. Look at the `database` field:
+   - `database.ok: true` → migrations likely need to be applied (see
+     step 2).
+   - `database.ok: false` and the message mentions a connection string
+     or network → see step 3.
+2. **Apply migrations once**, from a machine that has the Railway CLI
+   logged in against the staging project:
+   ```bash
+   railway run pnpm prisma migrate deploy
+   ```
+   This is the most common fix for a brand-new deploy. Set the
+   Post-Deploy Command (above) so the next deploy self-migrates.
+3. **Verify `DATABASE_URL`** in Railway → Variables. If the Kuwenta
+   service was created *before* the Postgres plugin was attached, the
+   variable will be unset. Re-link the plugin or paste the connection
+   string manually.
+
+You can also see the same diagnostics by reading Railway → Logs for
+the deploy. The login route now logs a structured line on every
+failure:
+
+```
+[login] prisma.user.findUnique failed {
+  username: 'admin',
+  errorName: 'PrismaClientKnownRequestError',
+  errorMessage: 'relation "User" does not exist'
+}
+```
+
+`errorName` tells you the class of failure (initialization vs. known
+query error vs. validation), and `errorMessage` is the human-readable
+explanation. Migrations-not-run shows up as
+`relation "User" does not exist`; a bad `DATABASE_URL` shows up as
+`Can't reach database server at <host>:<port>`.
+

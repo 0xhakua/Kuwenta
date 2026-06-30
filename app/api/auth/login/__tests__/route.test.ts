@@ -63,6 +63,32 @@ describe('POST /api/auth/login', () => {
     })
   })
 
+  it('logs the Prisma errorName and errorMessage so Railway stdout shows which subsystem failed', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const prismaError = new Error('relation "User" does not exist')
+    prismaError.name = 'PrismaClientKnownRequestError'
+    mocks.findUnique.mockRejectedValueOnce(prismaError)
+
+    await POST(jsonRequest({ username: 'admin', password: 'admin1234!' }))
+
+    const loginLog = errorSpy.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('prisma.user.findUnique')
+    )
+    expect(loginLog).toBeDefined()
+    const meta = loginLog?.[1] as {
+      username: string
+      errorName: string
+      errorMessage: string
+    }
+    expect(meta).toMatchObject({
+      username: 'admin',
+      errorName: 'PrismaClientKnownRequestError',
+      errorMessage: 'relation "User" does not exist',
+    })
+
+    errorSpy.mockRestore()
+  })
+
   it('returns 401 with Invalid credentials when the user does not exist', async () => {
     mocks.findUnique.mockResolvedValueOnce(null)
 
