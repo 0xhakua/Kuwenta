@@ -534,6 +534,18 @@ Default admin credentials (from seed):
 - Username: `admin`
 - Password: value of `ADMIN_PASSWORD` in `.env.local`
 
+### Windows-specific notes
+
+- `lib/storage.ts` defaults `STORAGE_PATH` to `/app/storage`, which does not
+  exist on Windows dev machines. Set `STORAGE_PATH=./storage` in `.env.local`
+  (or per-shell) to redirect PDF and SAWT output to a local directory.
+- `lib/__tests__/storage.test.ts` contains a Windows-only `describe` block
+  (guarded by `describe.skipIf(!IS_WINDOWS)`) that round-trips a file under
+  the override path. On POSIX runners it is reported as skipped, not failed.
+- Long path support must be enabled if any project path exceeds the Win32
+  260-character limit; pnpm's content-addressable store is usually under
+  `~/AppData/Local/pnpm` and can sit close to the limit.
+
 ---
 
 ## Journal Entry Trigger Map
