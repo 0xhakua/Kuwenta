@@ -21,7 +21,7 @@ This is the **authoritative visual guide for coding agents** working on Krunchr'
 | Concern | File | Notes |
 |---|---|---|
 | Color tokens, radius, elevation, brand utilities | `app/globals.css` | `:root` (light) + `.dark`. shadcn maps these to `--color-*`. |
-| Fonts | `app/layout.tsx` | Public Sans (headings) + Inter (body) via `next/font`. |
+| Fonts | `app/globals.css` (`--font-sans`, `--font-heading`) + `app/layout.tsx` (`--font-mono`) | SF Pro system font stack (headings + body); Geist Mono via `next/font` for Stellar hashes / TX IDs. |
 | App shell (sidebar + topbar) | `app/(dashboard)/layout.tsx` | Branded nav lockup + Stellar status. |
 | Primitives | `components/ui/*` | shadcn/base-ui. Restyle via tokens, not per-page overrides. |
 | Icons | `lucide-react` | See §9 for the Material-Symbols → lucide map. |
@@ -87,11 +87,19 @@ Dark mode flips the canvas to navy (`#0B1C30`) with `#131B2E` cards and a bright
 
 ## 4. Typography
 
-Two families, loaded in `app/layout.tsx`:
+Two web families — the **SF Pro** system stack for everything visible, and **Geist Mono** reserved for Stellar hashes / TX IDs:
 
-- **Public Sans** — headings / display. Exposed as `--font-heading`; use **`font-heading`**. Weights 600/700/800/900. `CardTitle` already uses it.
-- **Inter** — body, labels, UI. Exposed as `--font-sans` (default `font-sans`). Weights 400–700.
-- **Monospace** — Geist Mono (`font-mono`) for **Stellar hashes / TX IDs** only.
+- **SF Pro** — headings, body, labels, UI. Apple's system font on macOS / iOS, so it ships with the OS (no download, no FOIT, no layout shift). On non-Apple platforms the stack falls through to `system-ui` (Segoe UI on Windows, Roboto on Android). Exposed as `--font-sans` (default `font-sans`) and `--font-heading` (`font-heading`); both resolve to the same stack — the OS picks the right display / text cut. Weights 400–900. `CardTitle`, `CardHeader` and the page chrome (`Krunchr` lockup) all consume `font-heading`.
+- **Monospace** — Geist Mono (`font-mono`) for **Stellar hashes / TX IDs** only. Loaded via `next/font/google` in `app/layout.tsx`; exposed as `--font-mono` on `<body>`.
+
+The SF Pro stack itself is declared in `app/globals.css` `:root` as:
+
+```css
+--font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+--font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+```
+
+Apple does not redistribute SF Pro for the web, so we never ship the font files — we rely on the OS-resolved family. If a future requirement needs pixel-identical SF Pro on every device, that's a separate licensing task.
 
 ### Type scale (from the mock)
 
@@ -201,7 +209,8 @@ Use **lucide-react** (the mock's Material Symbols are not installed). Keep icons
 **Don't**
 - Hardcode hex or Tailwind palette colors (`green-600`, `slate-200`) in pages.
 - Add heavy shadows or large radii outside the scale.
-- Introduce new fonts or icon libraries.
+- Add a third webfont — the system is SF Pro (headings + body) + Geist Mono (hashes only). The body / heading family must come from the `--font-sans` / `--font-heading` tokens in `globals.css`, never an inline `font-family`.
+- Introduce a new icon library.
 - Set heading weights below 600 or skip `font-heading` on headings.
 - Author per-component dark-mode overrides when a token would do.
 

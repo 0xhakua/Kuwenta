@@ -96,6 +96,17 @@
     --input: #cbd5e1;
     --ring: #0d9488;
 
+    /* Fonts — SF Pro system stack (BRAND.md §4). Apple ships SF Pro
+     * on macOS / iOS so it resolves natively with zero download. On
+     * non-Apple platforms the chain falls through to system-ui
+     * (Segoe UI on Windows, Roboto on Android) with no FOIT.
+     * `--font-mono` is set separately by the Geist_Mono next/font
+     * class on <body> (Stellar hashes / TX IDs). */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+      "SF Pro Text", system-ui, sans-serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+      "SF Pro Text", system-ui, sans-serif;
+
     /* Charts: teal, mint, blue, navy, slate */
     --chart-1: #0d9488;
     --chart-2: #4edea3;
