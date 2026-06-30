@@ -651,6 +651,13 @@ When you add a new pure computation function, add a case to
 `pnpm lint` and `pnpm build` must both exit 0 on a fresh checkout. CI runs
 them in this order; keep them green.
 
+- `pnpm install` must regenerate the Prisma client on every fresh install.
+  `package.json` defines `"postinstall": "prisma generate"` so Railway,
+  fresh clones, and contributors running `pnpm install --frozen-lockfile`
+  all get `node_modules/.prisma/client` populated. Removing this script
+  re-introduces the build failure from #99: TypeScript reports
+  `Module '"@prisma/client"' has no exported member 'Prisma'` because the
+  generated `Prisma` namespace is what `@prisma/client/index.d.ts` re-exports.
 - `pnpm lint` — exits 0 with **0 errors** (warnings may be present; see below).
   As of this commit, the only warning is `'taxYear' is assigned a value but
   never used` at `app/api/filing-package/download/__tests__/route.test.ts:160`
