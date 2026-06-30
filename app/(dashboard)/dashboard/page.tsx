@@ -111,7 +111,8 @@ export default function DashboardPage() {
   }, [parsedUrlYear])
 
   const handleYearChange = useCallback(
-    (value: string) => {
+    (value: string | null) => {
+      if (value == null) return
       const next = Number.parseInt(value, 10)
       if (!Number.isFinite(next)) return
       const params = new URLSearchParams(searchParams.toString())

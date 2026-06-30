@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client'
 
 export interface JournalListFilters {
   subsection?: string | null
-  quarter?: number | string | null
+  quarter?: number | null
   accountName?: string | null
 }
 

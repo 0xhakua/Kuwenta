@@ -79,10 +79,6 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    # Build is informational until the pre-existing TS error in
-    # app/(dashboard)/dashboard/page.tsx is fixed (see #89). It still runs
-    # on every PR so we can see the red build and act on it.
-    continue-on-error: true
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       # Build does not need the database, but Prisma generate still runs
@@ -103,7 +99,6 @@ jobs:
       - run: pnpm prisma generate
       - name: Build
         # Next.js build emits expected Stellar / sodium-native webpack warnings
-        # (see CLAUDE.md). The job is marked continue-on-error above so the
-        # workflow stays green while a known TS error (#89) is open. Remove
-        # the continue-on-error once that issue is fixed.
+        # (see CLAUDE.md). They are non-fatal. The step still fails on real
+        # errors (TS errors, missing modules, etc).
         run: pnpm build

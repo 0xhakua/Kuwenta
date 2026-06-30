@@ -46,7 +46,7 @@ export type TaxYearForPenalty = {
 
 export type ReturnForPenalty = {
   id: string
-  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A' | 'FORM_1701'
   quarter: number | null
   computedTaxDue: Decimal.Value | null
   netTaxDue: Decimal.Value | null

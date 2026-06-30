@@ -163,7 +163,7 @@ function renderEntry(entry: MergeEntry): string {
   const date = formatDate(entry.date)
   const heading = entry.prNumber
     ? `### ${date} — PR #${entry.prNumber} — ${formatPrTitleForEntry(entry.prTitle)}`
-    : `### ${date} — ${entry.prTitle || entry.subject}`
+    : `### ${date} — ${entry.prTitle}`
   const lines: string[] = [heading]
   lines.push(`- PR: \`#${entry.prNumber}\``)
   lines.push(`- What changed: ${entry.prTitle}.`)
