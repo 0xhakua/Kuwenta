@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
+import { canElect } from '@/lib/election-rules'
 
 const electionSchema = z.object({
   electedRate: z.enum(['RATE_8PCT', 'GRADUATED']),
@@ -94,19 +95,13 @@ export async function POST(req: NextRequest) {
 
     const taxYear = profile.taxYears[0]
 
-    if (taxYear.electionLockedAt) {
-      return NextResponse.json(
-        { error: 'Election is locked for this tax year' },
-        { status: 409 }
-      )
-    }
-
     const firstReturn = taxYear.returns[0]
-    if (firstReturn?.status === 'FILED') {
-      return NextResponse.json(
-        { error: 'Cannot elect after the first quarterly return has been filed' },
-        { status: 409 }
-      )
+    const decision = canElect({
+      electionLockedAt: taxYear.electionLockedAt,
+      firstReturnStatus: firstReturn?.status ?? null,
+    })
+    if (!decision.allowed) {
+      return NextResponse.json({ error: decision.reason }, { status: 409 })
     }
 
     if (electedRate === 'RATE_8PCT' && !disclosuresAcknowledged) {

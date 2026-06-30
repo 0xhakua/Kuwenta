@@ -66,3 +66,8 @@ Each entry:
 - PR: `#39`
 - What changed: New auth-required `GET /api/atc/[code]` returns the full record (code, description, ewtRate, isActive, timestamps). 400 on empty code, 404 on missing, 401 on no session. No new public `PUT` — the existing admin `PATCH /api/admin/atc` is documented as the canonical update path (no public caller updates ATCs, and adding a parallel route would split the admin update logic). SPEC.md updated to reflect this.
 - Files touched: `app/api/atc/[code]/route.ts`, `SPEC.md`
+
+### 2026-06-29 — Tests: election lock/reset, penalty-base branches, tax-year init
+- PR: `#44`
+- What changed: Three areas flagged in #23 as untested now have coverage. (1) New `lib/election-rules.ts` extracts `canElect(state)` and `freshElectionState()` as pure helpers; `/api/election` POST now calls the helper. 7 vitest cases. (2) New `lib/computation/__tests__/penalty-base.test.ts` covers the non-2551Q branches the existing integration test missed: 1701Q/1701A under GRADUATED (₱0), 1701A under 8% with prior-year credit + quarterly payments, 1701A overpayment clamp, 2551Q under both rates. 9 cases. (3) New `lib/__tests__/tax-year.test.ts` covers `initializeTaxYear`: 8-return path, 4-return path, idempotency, due-date assignment, BR-11 fresh-election defaults. 5 cases. Suite: 21 files / 135 tests passing.
+- Files touched: `lib/election-rules.ts`, `lib/__tests__/election-rules.test.ts`, `lib/computation/__tests__/penalty-base.test.ts`, `lib/__tests__/tax-year.test.ts`, `app/api/election/route.ts`
