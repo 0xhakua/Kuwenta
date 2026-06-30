@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ type JournalEntry = {
   subsection: string
   triggerEvent: string
   triggerEntityId: string | null
+  quarter: number | null
   entryDate: string
   regulationRef: string | null
   workflowMenu: string | null
@@ -43,6 +45,7 @@ type JournalEntry = {
 }
 
 const SUBSECTIONS = ['9A', '9B', '9C', '9D', '9E', '9F', '9G']
+type QuarterFilter = 'ALL' | '1' | '2' | '3' | '4'
 
 function subsectionLabel(subsection: string): string {
   const labels: Record<string, string> = {
@@ -66,10 +69,26 @@ function entryColor(entry: JournalEntry): string {
   return 'bg-gray-100 text-gray-800'
 }
 
+function buildJournalUrl(params: {
+  subsection: string
+  quarter: QuarterFilter
+  accountName: string
+}): string {
+  const base = params.subsection === 'ALL' ? '/api/journal' : `/api/journal/${params.subsection}`
+  const search = new URLSearchParams()
+  if (params.quarter !== 'ALL') search.set('quarter', params.quarter)
+  const trimmedAccount = params.accountName.trim()
+  if (trimmedAccount.length > 0) search.set('accountName', trimmedAccount)
+  const qs = search.toString()
+  return qs.length > 0 ? `${base}?${qs}` : base
+}
+
 export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [taxYear, setTaxYear] = useState<number | null>(null)
   const [subsection, setSubsection] = useState<string>('ALL')
+  const [quarter, setQuarter] = useState<QuarterFilter>('ALL')
+  const [accountName, setAccountName] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [error, setError] = useState('')
@@ -79,7 +98,7 @@ export default function JournalPage() {
     setLoading(true)
     setError('')
     try {
-      const url = subsection === 'ALL' ? '/api/journal' : `/api/journal/${subsection}`
+      const url = buildJournalUrl({ subsection, quarter, accountName })
       const res = await fetch(url)
       const data = await res.json()
       if (!res.ok) {
@@ -98,7 +117,7 @@ export default function JournalPage() {
   useEffect(() => {
     let cancelled = false
 
-    const url = subsection === 'ALL' ? '/api/journal' : `/api/journal/${subsection}`
+    const url = buildJournalUrl({ subsection, quarter, accountName })
     fetch(url)
       .then(async (res) => {
         const data = await res.json()
@@ -118,7 +137,7 @@ export default function JournalPage() {
     return () => {
       cancelled = true
     }
-  }, [subsection])
+  }, [subsection, quarter, accountName])
 
   async function regenerate() {
     setRegenerating(true)
@@ -144,6 +163,12 @@ export default function JournalPage() {
     window.open('/api/journal/export', '_blank')
   }
 
+  function clearFilters() {
+    setSubsection('ALL')
+    setQuarter('ALL')
+    setAccountName('')
+  }
+
   const grouped = useMemo(() => {
     const map = new Map<string, JournalEntry[]>()
     for (const entry of entries) {
@@ -153,6 +178,9 @@ export default function JournalPage() {
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [entries])
+
+  const filtersActive =
+    subsection !== 'ALL' || quarter !== 'ALL' || accountName.trim().length > 0
 
   return (
     <div className="space-y-6">
@@ -164,6 +192,18 @@ export default function JournalPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={downloadXlsx}>Download XLSX</Button>
+          <Button onClick={regenerate} disabled={regenerating}>
+            {regenerating ? 'Regenerating…' : 'Regenerate'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Sub-section
+          </label>
           <Select value={subsection} onValueChange={(value) => value && setSubsection(value)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by subsection" />
@@ -177,11 +217,40 @@ export default function JournalPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={downloadXlsx}>Download XLSX</Button>
-          <Button onClick={regenerate} disabled={regenerating}>
-            {regenerating ? 'Regenerating…' : 'Regenerate'}
-          </Button>
         </div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Quarter
+          </label>
+          <Select value={quarter} onValueChange={(value) => value && setQuarter(value as QuarterFilter)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All quarters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All (incl. annual)</SelectItem>
+              <SelectItem value="1">Q1 only</SelectItem>
+              <SelectItem value="2">Q2 only</SelectItem>
+              <SelectItem value="3">Q3 only</SelectItem>
+              <SelectItem value="4">Q4 only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Account name
+          </label>
+          <Input
+            type="text"
+            placeholder="e.g. CWT Receivable, Service Income"
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+          />
+        </div>
+        {filtersActive && (
+          <Button variant="ghost" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -192,10 +261,11 @@ export default function JournalPage() {
       ) : entries.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No journal entries yet</CardTitle>
+            <CardTitle>No journal entries match</CardTitle>
             <CardDescription>
-              Journal entries are generated when you add income, file returns, or set
-              overpayment dispositions. Click Regenerate to build them from existing data.
+              {filtersActive
+                ? 'Try removing a filter or click Regenerate to rebuild the journal from current data.'
+                : 'Journal entries are generated when you add income, file returns, or set overpayment dispositions. Click Regenerate to build them from existing data.'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -214,6 +284,7 @@ export default function JournalPage() {
                     <TableRow>
                       <TableHead>Entry #</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Quarter</TableHead>
                       <TableHead>Trigger</TableHead>
                       <TableHead>Lines</TableHead>
                       <TableHead>Type</TableHead>
@@ -224,6 +295,9 @@ export default function JournalPage() {
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium">{entry.entryNumber}</TableCell>
                         <TableCell>{formatDate(entry.entryDate)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {entry.quarter != null ? `Q${entry.quarter}` : '—'}
+                        </TableCell>
                         <TableCell>{entry.triggerEvent}</TableCell>
                         <TableCell>
                           <div className="space-y-1">

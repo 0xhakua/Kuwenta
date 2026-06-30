@@ -15,8 +15,18 @@ export interface TaxYearContext {
   }
   certificates: Form2307Context[]
   returns: TaxReturnContext[]
-  priorYearCredit: { id: string; amount: Decimal; originYear: number; originForm: string } | null
-  overpayment: { id: string; amount: Decimal; disposition: 'CARRY_OVER' | 'REFUND' | 'TAX_CREDIT_CERTIFICATE' | null } | null
+  priorYearCredit: { id: string; amount: Decimal; originYear: number; originForm: string; sourceOverpaymentId?: string | null } | null
+  overpayment: {
+    id: string
+    amount: Decimal
+    disposition: 'CARRY_OVER' | 'REFUND' | 'TAX_CREDIT_CERTIFICATE' | null
+    electedAt: Date | null
+    carryOverAppliedAt: Date | null
+    refundReceivedAt: Date | null
+    refundReference: string | null
+    tccNumber: string | null
+    tccAppliedAt: Date | null
+  } | null
 }
 
 export interface Form2307Context {
@@ -64,10 +74,20 @@ export interface ReturnFilingInput {
 
 export interface PriorYearCreditInput {
   taxYear: TaxYearContext
-  credit: { id: string; amount: Decimal; originYear: number; originForm: string }
+  credit: { id: string; amount: Decimal; originYear: number; originForm: string; sourceOverpaymentId?: string | null }
 }
 
 export interface OverpaymentInput {
   taxYear: TaxYearContext
-  overpayment: { id: string; amount: Decimal; disposition: 'CARRY_OVER' | 'REFUND' | 'TAX_CREDIT_CERTIFICATE' }
+  overpayment: {
+    id: string
+    amount: Decimal
+    disposition: 'CARRY_OVER' | 'REFUND' | 'TAX_CREDIT_CERTIFICATE'
+    electedAt?: Date | null
+    carryOverAppliedAt?: Date | null
+    refundReceivedAt?: Date | null
+    refundReference?: string | null
+    tccNumber?: string | null
+    tccAppliedAt?: Date | null
+  }
 }

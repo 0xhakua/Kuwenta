@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import Decimal from 'decimal.js'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
-
-const VALID_SUBSECTIONS = new Set([
-  '9A', '9B', '9C', '9D', '9E', '9F', '9G',
-])
+import {
+  buildJournalListWhere,
+  parseAccountNameFilter,
+  parseQuarterFilter,
+  parseSubsectionFilter,
+} from '@/lib/journal/query'
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ subsection: string }> }
 ) {
   const session = await requireAuth()
@@ -17,10 +19,18 @@ export async function GET(
   }
 
   try {
-    const { subsection } = await params
-    if (!VALID_SUBSECTIONS.has(subsection.toUpperCase())) {
-      return NextResponse.json({ error: 'Invalid subsection' }, { status: 400 })
+    const { subsection: subsectionParam } = await params
+    const subsection = parseSubsectionFilter(subsectionParam)
+    if (typeof subsection === 'object' && 'error' in subsection) {
+      return NextResponse.json({ error: subsection.error }, { status: 400 })
     }
+
+    const url = new URL(req.url)
+    const quarter = parseQuarterFilter(url.searchParams.get('quarter'))
+    if (typeof quarter === 'object' && 'error' in quarter) {
+      return NextResponse.json({ error: quarter.error }, { status: 400 })
+    }
+    const accountName = parseAccountNameFilter(url.searchParams.get('accountName'))
 
     const profile = await prisma.taxpayerProfile.findUnique({
       where: { userId: session.sub },
@@ -28,13 +38,6 @@ export async function GET(
         taxYears: {
           orderBy: { year: 'desc' },
           take: 1,
-          include: {
-            journalEntries: {
-              where: { subsection: subsection.toUpperCase() },
-              orderBy: [{ entryNumber: 'asc' }, { createdAt: 'asc' }],
-              include: { lines: { orderBy: { lineOrder: 'asc' } } },
-            },
-          },
         },
       },
     })
@@ -44,12 +47,25 @@ export async function GET(
       return NextResponse.json({ taxYear: null, entries: [] })
     }
 
-    const entries = taxYear.journalEntries.map((entry) => ({
+    const { where } = buildJournalListWhere(taxYear.id, {
+      subsection,
+      quarter,
+      accountName,
+    })
+
+    const journalEntries = await prisma.journalEntry.findMany({
+      where,
+      orderBy: [{ entryNumber: 'asc' }, { createdAt: 'asc' }],
+      include: { lines: { orderBy: { lineOrder: 'asc' } } },
+    })
+
+    const entries = journalEntries.map((entry) => ({
       id: entry.id,
       entryNumber: entry.entryNumber,
       subsection: entry.subsection,
       triggerEvent: entry.triggerEvent,
       triggerEntityId: entry.triggerEntityId,
+      quarter: entry.quarter,
       entryDate: entry.entryDate.toISOString(),
       regulationRef: entry.regulationRef,
       workflowMenu: entry.workflowMenu,
@@ -63,7 +79,12 @@ export async function GET(
       })),
     }))
 
-    return NextResponse.json({ taxYear: taxYear.year, subsection, entries })
+    return NextResponse.json({
+      taxYear: taxYear.year,
+      subsection,
+      entries,
+      filters: { subsection, quarter, accountName },
+    })
   } catch (err) {
     console.error('Get journal subsection error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

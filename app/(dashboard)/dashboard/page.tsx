@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { FileText, Plus, Rocket, Wallet } from 'lucide-react'
 
 type DashboardReturn = {
@@ -59,9 +67,20 @@ type DashboardData = {
     netPosition: string
     overpayment: string
   } | null
+  availableYears: number[]
+  activeYear: number | null
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlYear = searchParams.get('year')
+  const parsedUrlYear = useMemo(() => {
+    if (!urlYear || !/^\d{4}$/.test(urlYear)) return null
+    const n = Number.parseInt(urlYear, 10)
+    return Number.isFinite(n) ? n : null
+  }, [urlYear])
+
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -70,7 +89,8 @@ export default function DashboardPage() {
     let cancelled = false
     async function fetchDashboard() {
       try {
-        const res = await fetch('/api/dashboard')
+        const qs = parsedUrlYear != null ? `?year=${parsedUrlYear}` : ''
+        const res = await fetch(`/api/dashboard${qs}`)
         const json = await res.json()
         if (cancelled) return
         if (!res.ok) {
@@ -88,7 +108,18 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [parsedUrlYear])
+
+  const handleYearChange = useCallback(
+    (value: string) => {
+      const next = Number.parseInt(value, 10)
+      if (!Number.isFinite(next)) return
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('year', String(next))
+      router.replace(`/dashboard?${params.toString()}`)
+    },
+    [router, searchParams]
+  )
 
   function statusColor(status: string) {
     switch (status) {
@@ -129,7 +160,7 @@ export default function DashboardPage() {
     )
   }
 
-  const { taxpayer, taxYear, returns, ytd, upcoming, nextReturnId, progress, annualPosition } = data
+  const { taxpayer, taxYear, returns, ytd, upcoming, nextReturnId, progress, annualPosition, availableYears, activeYear } = data
 
   return (
     <div className="space-y-6">
@@ -141,7 +172,24 @@ export default function DashboardPage() {
             TIN {taxpayer.tin} · RDO {taxpayer.rdoCode} · Tax Year {taxYear?.year}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {availableYears.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Tax Year</span>
+              <Select value={String(activeYear ?? '')} onValueChange={handleYearChange}>
+                <SelectTrigger className="h-8 w-[120px]" aria-label="Select active tax year">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Badge variant="outline">{taxpayer.incomeType === 'MIXED_INCOME' ? 'Mixed Income' : 'Pure Self-Employment'}</Badge>
           <Badge variant="outline">{taxYear?.corIncludes2551Q ? 'COR includes 2551Q' : 'No 2551Q'}</Badge>
           {taxYear?.electedRate === 'RATE_8PCT' && (

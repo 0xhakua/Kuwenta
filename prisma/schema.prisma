@@ -35,6 +35,7 @@ model TaxpayerProfile {
   natureOfBusiness  String
   incomeType        IncomeType @default(PURE_SELF_EMPLOYMENT)
   corIncludes2551Q  Boolean    @default(true)
+  isNewRegistrant   Boolean    @default(false)  // elected 8% on Form 1901 at initial BIR registration
   atcCodes          TaxpayerATC[]
   taxYears          TaxYear[]
   createdAt         DateTime   @default(now())
@@ -66,9 +67,11 @@ model TaxYear {
   taxpayerId      String
   taxpayer        TaxpayerProfile @relation(fields: [taxpayerId], references: [id])
   year            Int             // e.g. 2025
-  electionStatus  ElectionStatus  @default(NOT_ELECTED)
-  electedRate     TaxRate?
-  electionDate    DateTime?
+  electionStatus   ElectionStatus  @default(NOT_ELECTED)
+  electedRate      TaxRate?
+  electionPath     String?         // ITEM_13_2551Q_Q1 | ITEM_16_1701Q_Q1 (actual BIR line item)
+  electionMethod   String?         // ITEM_13_2551Q_Q1 | ITEM_16_1701Q_Q1 | FORM_1905 (how the election was recorded)
+  electionDate     DateTime?
   electionLockedAt DateTime?
   vatBreached     Boolean         @default(false)
   vatBreachDate   DateTime?
@@ -170,27 +173,34 @@ model ReturnPenalty {
 }
 
 model PriorYearCredit {
-  id              String    @id @default(cuid())
-  taxYearId       String    @unique
-  taxYear         TaxYear   @relation(fields: [taxYearId], references: [id])
-  amount          Decimal   @db.Decimal(15, 2)
-  originYear      Int
-  originForm      String
-  priorDisposition String   // must be "CARRY_OVER" to be eligible
-  isValidated     Boolean   @default(false)
-  userConfirmedAt DateTime?
-  createdAt       DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  taxYearId           String    @unique
+  taxYear             TaxYear   @relation(fields: [taxYearId], references: [id])
+  amount              Decimal   @db.Decimal(15, 2)
+  originYear          Int
+  originForm          String
+  priorDisposition    String   // must be "CARRY_OVER" to be eligible
+  isValidated         Boolean   @default(false)
+  userConfirmedAt     DateTime?
+  sourceOverpaymentId String?  // links to the prior-year Overpayment that this credit applies (used for 9.16)
+  createdAt           DateTime  @default(now())
 }
 
 model Overpayment {
-  id              String              @id @default(cuid())
-  taxYearId       String              @unique
-  taxYear         TaxYear             @relation(fields: [taxYearId], references: [id])
-  amount          Decimal             @db.Decimal(15, 2)
-  disposition     OverpaymentOption?
-  electedAt       DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                  String              @id @default(cuid())
+  taxYearId           String              @unique
+  taxYear             TaxYear             @relation(fields: [taxYearId], references: [id])
+  amount              Decimal             @db.Decimal(15, 2)
+  disposition         OverpaymentOption?
+  electedAt           DateTime?
+  // Step-2 settlement tracking (9.16 / 9.18 / 9.20)
+  carryOverAppliedAt  DateTime?           // set when next year applies the carry-over (9.16)
+  refundReceivedAt    DateTime?           // set when BIR refund is received (9.18)
+  refundReference     String?             // BIR acknowledgement reference for refund
+  tccNumber           String?             // Tax Credit Certificate number
+  tccAppliedAt        DateTime?           // set when TCC is applied against 1701A (9.20)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }
 
 enum OverpaymentOption {
@@ -239,6 +249,7 @@ model JournalEntry {
   subsection      String        // "9A" through "9G"
   triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
   triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  quarter         Int?          // 1-4 for quarterly entries (9A, 9B, 9C); null for annual (9D-9G)
   entryDate       DateTime
   lines           JournalLine[]
   regulationRef   String?       // e.g. "RR No. 8-2018"

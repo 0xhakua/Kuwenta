@@ -100,9 +100,14 @@ export default function SawtPage() {
           <p className="text-muted-foreground">Tax Year {pkg?.taxYear}</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/api/sawt/export">
+          <Link href="/api/sawt/export?format=dat">
             <Button variant="outline" size="sm">
-              <FileDown className="mr-2 h-4 w-4" /> Export SAWT CSV
+              <FileDown className="mr-2 h-4 w-4" /> Download SAWT DAT
+            </Button>
+          </Link>
+          <Link href="/api/sawt/export?format=csv">
+            <Button variant="outline" size="sm">
+              <FileDown className="mr-2 h-4 w-4" /> Download SAWT CSV
             </Button>
           </Link>
           <Link href="/api/filing-package/download">

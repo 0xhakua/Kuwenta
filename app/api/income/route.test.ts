@@ -1,0 +1,78 @@
+import { describe, it, expect } from 'vitest'
+import { NextRequest } from 'next/server'
+import { POST } from './route'
+import { prisma } from '@/lib/testing/db'
+import { createTaxpayerWithYear, createATCCode, seedReferenceData } from '@/lib/testing/factories'
+import { signToken } from '@/lib/auth/session'
+import { VAT_THRESHOLD, VAT_WARNING_THRESHOLD } from '@/lib/computation/vat-threshold'
+
+function makeRequest(userId: string, body: object): NextRequest {
+  return new NextRequest('http://localhost/api/income', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+describe('POST /api/income', () => {
+  it('returns VAT status and records breach when threshold is crossed', async () => {
+    await seedReferenceData()
+    const { user, taxYear } = await createTaxpayerWithYear()
+    const atc = await createATCCode({ code: 'WI010', ewtRate: 0.1 })
+
+    const token = await signToken({ sub: user.id, username: user.username, role: 'TAXPAYER' })
+    const req = new NextRequest('http://localhost/api/income', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `kuwenta_session=${token}` },
+      body: JSON.stringify({
+        quarter: 1,
+        payorTin: '123-456-789-000',
+        payorName: 'Test Payor',
+        atcCode: atc.code,
+        month1Amount: VAT_THRESHOLD.dividedBy(3).toNumber(),
+        month2Amount: VAT_THRESHOLD.dividedBy(3).toNumber(),
+        month3Amount: VAT_THRESHOLD.dividedBy(3).toNumber(),
+        cwtWithheld: VAT_THRESHOLD.times(0.1).toNumber(),
+      }),
+    })
+
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.vatStatus.thresholdReached).toBe(true)
+    expect(json.vatStatus.vatBreached).toBe(true)
+
+    const updated = await prisma.taxYear.findUnique({ where: { id: taxYear.id } })
+    expect(updated?.vatBreached).toBe(true)
+  })
+
+  it('warns when YTD gross is at or above 80% of threshold', async () => {
+    await seedReferenceData()
+    const { user } = await createTaxpayerWithYear()
+    const atc = await createATCCode({ code: 'WI011', ewtRate: 0.1 })
+
+    const token = await signToken({ sub: user.id, username: user.username, role: 'TAXPAYER' })
+    const req = new NextRequest('http://localhost/api/income', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: `kuwenta_session=${token}` },
+      body: JSON.stringify({
+        quarter: 1,
+        payorTin: '123-456-789-000',
+        payorName: 'Test Payor',
+        atcCode: atc.code,
+        month1Amount: VAT_WARNING_THRESHOLD.plus(1).dividedBy(3).toNumber(),
+        month2Amount: VAT_WARNING_THRESHOLD.plus(1).dividedBy(3).toNumber(),
+        month3Amount: VAT_WARNING_THRESHOLD.plus(1).dividedBy(3).toNumber(),
+        cwtWithheld: VAT_WARNING_THRESHOLD.plus(1).times(0.1).toNumber(),
+      }),
+    })
+
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.vatStatus.warningActive).toBe(true)
+    expect(json.vatStatus.thresholdReached).toBe(false)
+  })
+})

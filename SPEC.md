@@ -103,8 +103,7 @@ Step 4 — Tax Year Initialization
 
 List view:
 - All 2307 certificates for the active taxable year
-- Grouped by quarter, then by payor
-- Columns: Payor Name, ATC Code, Quarter, Gross Income, CWT Withheld, Status
+- Grouped by quarter, then by payor (each payor gets a sub-header with name, TIN, and certificate count; rows show ATC, Gross, CWT, Status, Actions)
 - Add New Certificate button
 - Running totals at top: YTD Gross, YTD CWT, VAT Threshold %
 
@@ -119,7 +118,7 @@ Add/Edit Certificate modal:
 
 Consolidated Income Summary:
 - Table of all certificates: Quarter | Payor | ATC | Gross | CWT
-- Exportable as PDF (attached to 1701A)
+- "Export PDF" button downloads a printable, BIR-style summary attachable to 1701A (uses the active-year selector)
 
 ---
 
@@ -128,11 +127,13 @@ Consolidated Income Summary:
 
 Only accessible if Q1 2551Q has not yet been filed.
 
-- **Three valid election paths — system supports all three:**
+- **Three valid election methods — system supports all three:**
   1. **Item 13 on Q1 Form 2551Q** — standard path for taxpayers whose COR includes 2551Q
   2. **Item 16 on Q1 Form 1701Q** — valid alternative; applicable to taxpayers whose COR does NOT include 2551Q. For these users, the Q1 1701Q is the first (and only quarterly income tax) return, and Item 16 is where the election is declared. Legal basis: RR No. 8-2018 Sec. 3; RMC No. 32-2018; RMO No. 23-2018 Sec. 7.
-  3. **BIR Form 1905 (COR update)** — election via RDO; when recorded in system, pre-populates Item 13 or Item 16 accordingly.
-- System detects which path applies based on the COR 2551Q flag set during onboarding
+  3. **BIR Form 1905 (COR update)** — election via RDO; when recorded the system resolves the actual BIR line item (Item 13 or Item 16) from the COR-2551Q flag and stores it in `electionPath`. `electionMethod` is set to `FORM_1905` so the RDO-driven origin is preserved for audit.
+- System detects the default path based on the COR 2551Q flag set during onboarding
+- `electionPath` always stores the actual BIR line item (`ITEM_13_2551Q_Q1` or `ITEM_16_1701Q_Q1`)
+- `electionMethod` stores how the election was recorded (`ITEM_13_2551Q_Q1`, `ITEM_16_1701Q_Q1`, or `FORM_1905`)
 - Displays two rate options:
   - (A) Graduated Income Tax Rate on Net Taxable Income
   - (B) 8% Income Tax Rate on Gross Sales/Receipts/Others
@@ -142,7 +143,7 @@ Only accessible if Q1 2551Q has not yet been filed.
   3. BIR Form 1701A is the required annual return (or 1701 for mixed-income earners)
   4. Financial Statements are NOT required
 - User must check all four disclosures before confirming
-- Confirmation timestamped and logged to audit trail
+- Confirmation timestamped and logged to audit trail, including both `electionPath` and `electionMethod`
 - Once confirmed, election flag locked and cascaded to all return computations
 - If new taxable year begins, election resets to default (Graduated) and user is prompted to re-elect
 
@@ -349,9 +350,8 @@ GET    /api/taxpayer/eligibility — Run eligibility check, return pass/fail per
 ### ATC Codes
 ```
 GET    /api/atc                 — List all active ATC codes
-GET    /api/atc/[code]          — Get single ATC with rate and description
-POST   /api/atc                 — Admin: create ATC code
-PUT    /api/atc/[code]          — Admin: update ATC code
+GET    /api/atc/[code]          — Get single ATC (rate + description + isActive)
+POST   /api/atc                 — Admin: create ATC code (canonical update path is PATCH /api/admin/atc — see below)
 ```
 
 ### Form 2307 Certificates
@@ -362,6 +362,7 @@ POST   /api/income              — Add new 2307 certificate (triggers recascade
 PUT    /api/income/[id]         — Amend certificate (triggers recascade)
 DELETE /api/income/[id]         — Remove certificate (triggers recascade)
 GET    /api/income/summary      — Consolidated income summary (all quarters, all payors)
+GET    /api/income/summary/export — Download consolidated income summary as PDF (attachable to 1701A)
 GET    /api/income/totals        — YTD totals: gross, CWT, VAT threshold %
 ```
 
@@ -400,6 +401,7 @@ DELETE /api/prior-year-credit/[id]   — Remove prior year credit
 ```
 GET    /api/overpayment/[taxYear]    — Get overpayment disposition for a tax year
 POST   /api/overpayment/[taxYear]    — Set disposition (Carry Over / Refund / TCC)
+PATCH  /api/overpayment/[taxYear]    — Record settlement event (REFUND_RECEIVED / TCC_APPLIED / CARRY_OVER_APPLIED)
 ```
 
 ### Penalties
@@ -421,7 +423,9 @@ GET    /api/filing-package/download — Stream ZIP of all 8 returns + SAWT + cov
 ### Journal Entries
 ```
 GET    /api/journal                      — List all journal entries for active tax year
+                                             Filters: ?subsection=9A&quarter=1&accountName=CWT
 GET    /api/journal/[subsection]         — Get entries for a specific sub-section (9A–9G)
+                                             Filters: ?quarter=1&accountName=CWT
 POST   /api/journal/generate             — Trigger full regeneration of all journal entries from existing data
 GET    /api/journal/export               — Download XLSX workbook (2 sheets: entries + legend)
 GET    /api/journal/accounts             — List all chart of accounts used in journal entries
@@ -442,10 +446,12 @@ GET    /api/admin/users              — List all users
 GET    /api/admin/audit-log          — Get audit log entries (filterable)
 GET    /api/admin/atc                — List all ATC codes including inactive
 POST   /api/admin/atc                — Create ATC code
-PUT    /api/admin/atc/[code]         — Update ATC code
+PATCH  /api/admin/atc                — Update ATC code (canonical update path; body: { code, description?, ewtRate?, isActive? })
+DELETE /api/admin/atc                — Delete ATC code (body: { code })
 GET    /api/admin/holidays           — List holiday calendar entries
 POST   /api/admin/holidays           — Add holiday
 PUT    /api/admin/penalties/rdo      — Update compromise penalty schedule by RDO
+GET    /api/admin/system-health      — Aggregate Stellar + storage + DB health
 ```
 
 ---
@@ -627,26 +633,32 @@ model ReturnPenalty {
 }
 
 model PriorYearCredit {
-  id              String    @id @default(cuid())
-  taxYearId       String    @unique
-  taxYear         TaxYear   @relation(fields: [taxYearId], references: [id])
-  amount          Decimal   @db.Decimal(15, 2)
-  originYear      Int
-  originForm      String
-  priorDisposition String   // must be "CARRY_OVER" to be eligible
-  isValidated     Boolean   @default(false)
-  userConfirmedAt DateTime?
-  createdAt       DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  taxYearId           String    @unique
+  taxYear             TaxYear   @relation(fields: [taxYearId], references: [id])
+  amount              Decimal   @db.Decimal(15, 2)
+  originYear          Int
+  originForm          String
+  priorDisposition    String   // must be "CARRY_OVER" to be eligible
+  isValidated         Boolean   @default(false)
+  userConfirmedAt     DateTime?
+  sourceOverpaymentId String?  // links to the prior-year Overpayment that produced this credit (used by 9.16)
+  createdAt           DateTime  @default(now())
 }
 
 model Overpayment {
-  id              String              @id @default(cuid())
-  taxYearId       String              @unique
-  taxYear         TaxYear             @relation(fields: [taxYearId], references: [id])
-  amount          Decimal             @db.Decimal(15, 2)
-  disposition     OverpaymentOption?
-  electedAt       DateTime?
-  createdAt       DateTime            @default(now())
+  id                  String              @id @default(cuid())
+  taxYearId           String              @unique
+  taxYear             TaxYear             @relation(fields: [taxYearId], references: [id])
+  amount              Decimal             @db.Decimal(15, 2)
+  disposition         OverpaymentOption?
+  electedAt           DateTime?
+  carryOverAppliedAt  DateTime?           // 9.16 — set when next year applies the carry-over
+  refundReceivedAt    DateTime?           // 9.18 — set when BIR refund is received
+  refundReference     String?             // BIR acknowledgement reference for refund
+  tccNumber           String?             // Tax Credit Certificate number (for 9.20)
+  tccAppliedAt        DateTime?           // 9.20 — set when TCC is applied against 1701A
+  createdAt           DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 }
 
@@ -684,11 +696,12 @@ model RDOPenaltySchedule {
 model JournalEntry {
   id              String        @id @default(cuid())
   taxYearId       String
-  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id])
+  taxYear         TaxYear       @relation(fields: [taxYearId], references: [id], onDelete: Cascade)
   entryNumber     String        // e.g. "9.1", "9.2"
   subsection      String        // "9A" through "9G"
   triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
   triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  quarter         Int?          // 1-4 for quarterly entries (9A/9B/9C); null for annual (9D-9G)
   entryDate       DateTime
   lines           JournalLine[]
   regulationRef   String?       // e.g. "RR No. 8-2018"
@@ -797,18 +810,23 @@ When a return is marked as filed (`POST /api/returns/[id]/file`):
 
 1. System generates the return PDF and stores it in Railway Volume
 2. SHA-256 hash of the PDF bytes is computed
-3. A Stellar `manageData` operation is submitted to testnet:
+3. Two Stellar `manageData` operations are submitted in a single transaction:
    - Key: `kuwenta:ph:${returnId}` (truncated to 64 chars)
-   - Value: `${sha256hash}:${filedDate.toISOString()}`
+     - Value: the 64-character SHA-256 hex hash
+   - Key: `kuwenta:ts:${returnId}` (truncated to 64 chars)
+     - Value: `filedDate.toISOString()`
+   
+   The hash and timestamp are split because a single 64-byte manageData value
+   cannot hold a 64-character hex hash plus an ISO timestamp.
 4. Transaction is signed using the system's Stellar keypair (env: `STELLAR_SECRET_KEY`)
-5. TX ID and hash stored in `StellarReceipt` table
+5. TX ID, hash, and timestamp stored in `StellarReceipt` table
 6. Explorer URL: `https://stellar.expert/explorer/testnet/tx/{txId}`
 
 ### Verification Flow
 
 Anyone with a TX ID can:
-1. Look up the TX on Stellar explorer
-2. Read the `manageData` payload (hash + timestamp)
+1. Look up the TX on Stellar explorer or via Horizon
+2. Read both `manageData` operations (hash under `kuwenta:ph:*`, timestamp under `kuwenta:ts:*`)
 3. Compare hash against the original PDF (if available)
 
 ### Environment Variables

@@ -4,6 +4,11 @@ import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { determineReturnStatus } from '@/lib/computation/sequence'
 import { getSequence, VAT_THRESHOLD } from '@/lib/computation/constants'
+import {
+  ACTIVE_YEAR_QUERY,
+  getActiveYearFromRequest,
+  setActiveYearCookie,
+} from '@/lib/active-year'
 
 function daysUntil(date: Date): number {
   const now = new Date()
@@ -23,7 +28,7 @@ function formatPeso(value: Decimal | number | string | null): string {
   })}`
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -35,7 +40,6 @@ export async function GET() {
       include: {
         taxYears: {
           orderBy: { year: 'desc' },
-          take: 1,
           include: {
             certificates: true,
             overpayment: true,
@@ -49,7 +53,7 @@ export async function GET() {
       },
     })
 
-    if (!profile?.taxYears[0]) {
+    if (!profile || profile.taxYears.length === 0) {
       return NextResponse.json({
         taxpayer: null,
         taxYear: null,
@@ -63,10 +67,23 @@ export async function GET() {
         upcoming: [],
         progress: { filedCount: 0, totalCount: 0, percent: 0 },
         annualPosition: null,
+        availableYears: [],
+        activeYear: null,
       })
     }
 
-    const taxYear = profile.taxYears[0]
+    const availableYears = profile.taxYears.map((ty) => ty.year)
+    const url = new URL(request.url)
+    const explicitQueryYear = url.searchParams.get(ACTIVE_YEAR_QUERY)
+    const resolvedYear = await getActiveYearFromRequest(request, availableYears)
+    const taxYear =
+      profile.taxYears.find((ty) => ty.year === resolvedYear) ??
+      profile.taxYears[0]
+    const activeYear = taxYear.year
+
+    if (explicitQueryYear && Number.parseInt(explicitQueryYear, 10) === activeYear) {
+      await setActiveYearCookie(activeYear)
+    }
     const sequence = getSequence(profile.corIncludes2551Q, profile.incomeType)
 
     const totalGross = taxYear.certificates.reduce(
@@ -164,6 +181,8 @@ export async function GET() {
         percent: totalCount > 0 ? Math.round((filedCount / totalCount) * 100) : 0,
       },
       annualPosition,
+      availableYears,
+      activeYear,
     })
   } catch (err) {
     console.error('Dashboard data error:', err)

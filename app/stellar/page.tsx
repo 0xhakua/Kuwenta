@@ -1,8 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -11,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { QrCode, ShieldCheck } from 'lucide-react'
 
 interface StellarReceipt {
   id: string
@@ -118,6 +128,19 @@ export default function StellarPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold">How a bank or embassy verifies this filing</h2>
+        </div>
+        <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+          <li>Scan the QR code or open the Stellar Explorer link for the return.</li>
+          <li>Confirm the transaction contains the manage-data entry for this filing.</li>
+          <li>Compare the anchored SHA-256 hash with the PDF filing package — they must match.</li>
+          <li>Check the anchored timestamp to verify when the return was committed on-chain.</li>
+        </ol>
+      </div>
+
       {receipts.length === 0 ? (
         <p className="text-muted-foreground">No Stellar receipts yet.</p>
       ) : (
@@ -155,6 +178,29 @@ export default function StellarPage() {
                     >
                       {copiedId === receipt.id ? 'Copied' : 'Copy'}
                     </Button>
+                    {receipt.explorerUrl && (
+                      <Dialog>
+                        <DialogTrigger>
+                          <Button variant="outline" size="sm">
+                            <QrCode className="mr-1 h-4 w-4" /> QR
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Verify on Stellar</DialogTitle>
+                            <DialogDescription>
+                              Scan to open the explorer and view the anchored filing hash.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="flex flex-col items-center gap-4 py-4">
+                            <QRCode value={receipt.explorerUrl} size={192} />
+                            <p className="text-center text-xs text-muted-foreground break-all px-4">
+                              {receipt.explorerUrl}
+                            </p>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                     {receipt.explorerUrl && (
                       <a
                         href={receipt.explorerUrl}

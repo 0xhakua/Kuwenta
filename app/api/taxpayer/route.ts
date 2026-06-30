@@ -15,12 +15,13 @@ const taxpayerSchema = z.object({
   natureOfBusiness: z.string().min(1),
   incomeType: z.enum(['PURE_SELF_EMPLOYMENT', 'MIXED_INCOME']),
   corIncludes2551Q: z.boolean(),
+  isNewRegistrant: z.boolean().default(false),
   atcCodes: z.array(z.string()).min(1, 'Select at least one ATC code'),
   taxYear: z.number().int().min(2000).max(2100),
 })
 
-export async function GET() {
-  const session = await requireAuth()
+export async function GET(req: NextRequest) {
+  const session = await requireAuth(req)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -52,7 +53,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireAuth()
+  const session = await requireAuth(req)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
           natureOfBusiness: data.natureOfBusiness,
           incomeType: data.incomeType,
           corIncludes2551Q: data.corIncludes2551Q,
+          isNewRegistrant: data.isNewRegistrant,
         },
       })
 
@@ -126,6 +128,7 @@ export async function POST(req: NextRequest) {
         data.corIncludes2551Q,
         holidays.map((h) => h.date),
         tx,
+        data.isNewRegistrant,
         data.incomeType
       )
 
@@ -193,6 +196,7 @@ export async function PUT(req: NextRequest) {
         ...(data.natureOfBusiness && { natureOfBusiness: data.natureOfBusiness }),
         ...(data.incomeType && { incomeType: data.incomeType }),
         ...(data.corIncludes2551Q !== undefined && { corIncludes2551Q: data.corIncludes2551Q }),
+        ...(data.isNewRegistrant !== undefined && { isNewRegistrant: data.isNewRegistrant }),
       },
       include: {
         atcCodes: { include: { atc: true } },

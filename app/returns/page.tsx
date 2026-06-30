@@ -25,6 +25,14 @@ type ReturnItem = {
     compromisePenalty: string
     totalPenalty: string
   } | null
+  stellarReceipt: {
+    stellarTxId: string
+    payloadHash: string
+    network: string
+    explorerUrl: string
+    status: 'PENDING' | 'CONFIRMED' | 'FAILED'
+    anchoredAt: string
+  } | null
 }
 
 export default function ReturnsPage() {
@@ -142,6 +150,33 @@ export default function ReturnsPage() {
 
               {ret.filedDate && (
                 <p className="text-sm text-muted-foreground">Filed on {formatDate(ret.filedDate)}</p>
+              )}
+
+              {ret.status === 'FILED' && ret.stellarReceipt && (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-muted-foreground">Stellar TX</p>
+                    <span className="font-mono text-xs">{ret.stellarReceipt.stellarTxId.slice(0, 8)}…{ret.stellarReceipt.stellarTxId.slice(-8)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-muted-foreground">Network</p>
+                    <span className="capitalize">{ret.stellarReceipt.network}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-muted-foreground">Status</p>
+                    <span>{ret.stellarReceipt.status}</span>
+                  </div>
+                  {ret.stellarReceipt.explorerUrl && (
+                    <a
+                      href={ret.stellarReceipt.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block text-xs text-primary hover:underline"
+                    >
+                      View on Stellar Explorer →
+                    </a>
+                  )}
+                </div>
               )}
 
               <div className="flex gap-2">
