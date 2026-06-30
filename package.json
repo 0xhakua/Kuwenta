@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "dotenv -e .env.test -- vitest",
-    "test:run": "dotenv -e .env.test -- vitest run",
+    "test:unit": "dotenv -e .env.test -- vitest run",
+    "test:run": "pnpm run test:unit && pnpm run verify:computations",
     "test:ui": "dotenv -e .env.test -- vitest --ui",
+    "verify:computations": "dotenv -e .env.test -- tsx scripts/verify-computations.ts",
     "db:test:migrate": "dotenv -e .env.test -- prisma migrate deploy",
     "db:test:reset": "tsx scripts/ensure-test-db.ts",
     "sync:changelog": "tsx scripts/sync-changelog.ts"

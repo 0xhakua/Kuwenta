@@ -608,4 +608,25 @@ All computation functions must produce these exact outputs given these inputs.
 
 ---
 
+## Running the Test Suite
+
+`pnpm test:run` runs the full CI verification in two phases. Both use `.env.test`
+(so they can be executed in CI without a dev database):
+
+1. **Unit tests** (`test:unit`) — Vitest against the test PostgreSQL DB
+   (`kuwenta_test`). Each test file truncates application tables in
+   `beforeEach`; see `lib/testing/db.ts`.
+2. **Computation verification** (`verify:computations`) — runs
+   `scripts/verify-computations.ts`, which asserts the reference figures
+   above against the pure functions in `lib/computation/`. Exits non-zero
+   on any mismatch, so `pnpm test:run` fails fast on a regression.
+
+`pnpm test` (no `:run`) starts Vitest in watch mode for local iteration.
+
+When you add a new pure computation function, add a case to
+`scripts/verify-computations.ts` so the reference scenario exercises it.
+
+
+---
+
 *This agent guide is authoritative. When in doubt between speed and correctness, choose correctness — this is tax compliance software.*
