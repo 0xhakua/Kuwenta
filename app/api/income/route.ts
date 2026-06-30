@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
+import { checkAndRecordVatBreach } from '@/lib/computation/vat-threshold'
 import { generateIncomeRecognitionJournal } from '@/lib/journal/generator'
 
 const certificateSchema = z.object({
@@ -17,8 +18,8 @@ const certificateSchema = z.object({
   cwtWithheld: z.union([z.string(), z.number()]),
 })
 
-export async function GET() {
-  const session = await requireAuth()
+export async function GET(req: NextRequest) {
+  const session = await requireAuth(req)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -57,7 +58,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireAuth()
+  const session = await requireAuth(req)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -125,10 +126,23 @@ export async function POST(req: NextRequest) {
       await recascadeTaxYear({ taxYearId: taxYear.id, tx })
       await generateIncomeRecognitionJournal(taxYear.id, created.id, '2307_ADDED', undefined, tx)
 
-      return created
+      const vatCheck = await checkAndRecordVatBreach(taxYear.id, tx)
+
+      return { created, vatCheck }
     })
 
-    return NextResponse.json({ certificate: { ...certificate, cwtValidated } }, { status: 201 })
+    return NextResponse.json(
+      {
+        certificate: { ...certificate.created, cwtValidated },
+        vatStatus: {
+          ytdGross: certificate.vatCheck.ytdGross.toFixed(2),
+          thresholdReached: certificate.vatCheck.thresholdReached,
+          warningActive: certificate.vatCheck.warningActive,
+          vatBreached: certificate.vatCheck.thresholdReached || certificate.vatCheck.alreadyBreached,
+        },
+      },
+      { status: 201 }
+    )
   } catch (err) {
     console.error('Create income error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
