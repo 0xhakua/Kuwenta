@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth/session'
 import { loadFilingData, FilingPdfElement } from '@/lib/pdf/dispatcher'
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await requireAuth()
@@ -14,6 +14,8 @@ export async function GET(
 
   try {
     const { id } = await params
+    const { searchParams } = new URL(req.url)
+    const inline = searchParams.get('inline') === '1'
 
     const data = await loadFilingData(id, session.sub)
     if (!data) {
@@ -28,7 +30,7 @@ export async function GET(
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${filename}"`,
       },
     })
   } catch (err) {

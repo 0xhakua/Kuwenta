@@ -149,6 +149,7 @@ export default function ReturnDetailPage() {
   const [recalcLoading, setRecalcLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(true)
 
   const [simDate, setSimDate] = useState(() => new Date().toISOString().split('T')[0])
   const [simulated, setSimulated] = useState<{
@@ -548,36 +549,69 @@ export default function ReturnDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle>Penalties</CardTitle>
-            <CardDescription>Computed as of today</CardDescription>
+            <CardTitle>Generated Form Preview</CardTitle>
+            <CardDescription>Read-only preview of the populated BIR form</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Days Late</span>
-              <span className="font-medium">{computation?.penalties?.daysLate ?? ret.penalties?.daysLate ?? 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Surcharge</span>
-              <span className="font-medium">{formatPeso(computation?.penalties?.surcharge.raw ?? ret.penalties?.surcharge ?? null)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Interest</span>
-              <span className="font-medium">{formatPeso(computation?.penalties?.interest.raw ?? ret.penalties?.interest ?? null)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Compromise</span>
-              <span className="font-medium">{formatPeso(computation?.penalties?.compromise.raw ?? ret.penalties?.compromisePenalty ?? null)}</span>
-            </div>
-            <hr />
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Penalty</span>
-              <span className="font-medium">{formatPeso(computation?.penalties?.total.raw ?? ret.penalties?.totalPenalty ?? null)}</span>
-            </div>
+          <CardContent className="flex-1 min-h-[400px]">
+            {ret.status === 'GENERATED' || ret.status === 'FILED' ? (
+              <div className="relative w-full h-full min-h-[400px] rounded-md border overflow-hidden">
+                {previewLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
+                    <span className="text-sm text-muted-foreground">Loading preview…</span>
+                  </div>
+                )}
+                <iframe
+                  src={`/api/returns/${id}/pdf?inline=1`}
+                  title={`BIR ${ret.formType.replace('FORM_', '')} preview`}
+                  className="w-full h-full min-h-[400px]"
+                  onLoad={() => setPreviewLoading(false)}
+                />
+              </div>
+            ) : (
+              <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center text-muted-foreground space-y-3">
+                <p>Form preview is available after the return is generated.</p>
+                {ret.status === 'PENDING' && (
+                  <Button onClick={generateReturn} disabled={loading}>
+                    Generate Return
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Penalties</CardTitle>
+          <CardDescription>Computed as of today</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Days Late</span>
+            <span className="font-medium">{computation?.penalties?.daysLate ?? ret.penalties?.daysLate ?? 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Surcharge</span>
+            <span className="font-medium">{formatPeso(computation?.penalties?.surcharge.raw ?? ret.penalties?.surcharge ?? null)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Interest</span>
+            <span className="font-medium">{formatPeso(computation?.penalties?.interest.raw ?? ret.penalties?.interest ?? null)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Compromise</span>
+            <span className="font-medium">{formatPeso(computation?.penalties?.compromise.raw ?? ret.penalties?.compromisePenalty ?? null)}</span>
+          </div>
+          <hr />
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Penalty</span>
+            <span className="font-medium">{formatPeso(computation?.penalties?.total.raw ?? ret.penalties?.totalPenalty ?? null)}</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
