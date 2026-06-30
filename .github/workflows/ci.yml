@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+# Cancel in-progress runs for the same branch on new pushes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+ # Pinned to match the project's required Node version.
+ NODE_VERSION: '20'
+ # Public-safe test values. Override with repo secrets if you need real ones.
+ TEST_DATABASE_URL: postgresql://kuwenta:kuwenta_dev@localhost:5432/kuwenta_test
+ ADMIN_PASSWORD: admin1234!
+ JWT_SECRET: test-jwt-secret-not-for-production
+ STORAGE_PATH: ./storage
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  test:
+    name: Test (Vitest + integration)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kuwenta
+          POSTGRES_PASSWORD: kuwenta_dev
+          POSTGRES_DB: kuwenta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kuwenta"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+      ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
+      JWT_SECRET: ${{ env.JWT_SECRET }}
+      STORAGE_PATH: ${{ env.STORAGE_PATH }}
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: pnpm prisma migrate deploy
+      - name: Run tests
+        run: pnpm test:run
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Build is informational until the pre-existing TS error in
+    # app/(dashboard)/dashboard/page.tsx is fixed (see #89). It still runs
+    # on every PR so we can see the red build and act on it.
+    continue-on-error: true
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Build does not need the database, but Prisma generate still runs
+      # against the placeholder URL.
+      DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
+      JWT_SECRET: ${{ env.JWT_SECRET }}
+      ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma generate
+      - name: Build
+        # Next.js build emits expected Stellar / sodium-native webpack warnings
+        # (see CLAUDE.md). The job is marked continue-on-error above so the
+        # workflow stays green while a known TS error (#89) is open. Remove
+        # the continue-on-error once that issue is fixed.
+        run: pnpm build

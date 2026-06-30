@@ -1,0 +1,25 @@
+name: Deploy (Railway)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Trigger Railway deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Railway deploy hook
+        env:
+          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+        if: ${{ env.RAILWAY_DEPLOY_HOOK != '' }}
+        run: |
+          if [ -z "$RAILWAY_DEPLOY_HOOK" ]; then
+            echo "RAILWAY_DEPLOY_HOOK is not set; skipping deploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK"
