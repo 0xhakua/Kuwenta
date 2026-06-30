@@ -1,5 +1,7 @@
 # Kuwenta
 
+[![CI](https://github.com/webnxt-2030/krunchr/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/webnxt-2030/krunchr/actions/workflows/ci.yml)
+
 Philippine individual tax compliance system for self-employed freelancers, with Stellar blockchain anchoring for immutable filing receipts.
 
 Built for the APAC Stellar Hackathon 2026 — Local Finance & Real World Access track.
