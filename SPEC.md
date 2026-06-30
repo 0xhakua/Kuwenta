@@ -399,6 +399,7 @@ DELETE /api/prior-year-credit/[id]   — Remove prior year credit
 ```
 GET    /api/overpayment/[taxYear]    — Get overpayment disposition for a tax year
 POST   /api/overpayment/[taxYear]    — Set disposition (Carry Over / Refund / TCC)
+PATCH  /api/overpayment/[taxYear]    — Record settlement event (REFUND_RECEIVED / TCC_APPLIED / CARRY_OVER_APPLIED)
 ```
 
 ### Penalties
@@ -628,26 +629,32 @@ model ReturnPenalty {
 }
 
 model PriorYearCredit {
-  id              String    @id @default(cuid())
-  taxYearId       String    @unique
-  taxYear         TaxYear   @relation(fields: [taxYearId], references: [id])
-  amount          Decimal   @db.Decimal(15, 2)
-  originYear      Int
-  originForm      String
-  priorDisposition String   // must be "CARRY_OVER" to be eligible
-  isValidated     Boolean   @default(false)
-  userConfirmedAt DateTime?
-  createdAt       DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  taxYearId           String    @unique
+  taxYear             TaxYear   @relation(fields: [taxYearId], references: [id])
+  amount              Decimal   @db.Decimal(15, 2)
+  originYear          Int
+  originForm          String
+  priorDisposition    String   // must be "CARRY_OVER" to be eligible
+  isValidated         Boolean   @default(false)
+  userConfirmedAt     DateTime?
+  sourceOverpaymentId String?  // links to the prior-year Overpayment that produced this credit (used by 9.16)
+  createdAt           DateTime  @default(now())
 }
 
 model Overpayment {
-  id              String              @id @default(cuid())
-  taxYearId       String              @unique
-  taxYear         TaxYear             @relation(fields: [taxYearId], references: [id])
-  amount          Decimal             @db.Decimal(15, 2)
-  disposition     OverpaymentOption?
-  electedAt       DateTime?
-  createdAt       DateTime            @default(now())
+  id                  String              @id @default(cuid())
+  taxYearId           String              @unique
+  taxYear             TaxYear             @relation(fields: [taxYearId], references: [id])
+  amount              Decimal             @db.Decimal(15, 2)
+  disposition         OverpaymentOption?
+  electedAt           DateTime?
+  carryOverAppliedAt  DateTime?           // 9.16 — set when next year applies the carry-over
+  refundReceivedAt    DateTime?           // 9.18 — set when BIR refund is received
+  refundReference     String?             // BIR acknowledgement reference for refund
+  tccNumber           String?             // Tax Credit Certificate number (for 9.20)
+  tccAppliedAt        DateTime?           // 9.20 — set when TCC is applied against 1701A
+  createdAt           DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 }
 

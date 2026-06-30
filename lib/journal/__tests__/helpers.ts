@@ -89,6 +89,7 @@ export function buildPriorYearCreditInput(
       amount: d('5000'),
       originYear: 2025,
       originForm: 'FORM_1701A',
+      sourceOverpaymentId: null,
       ...overrides.credit,
     },
   }
@@ -106,6 +107,12 @@ export function buildOverpaymentInput(
       id: 'ovp-1',
       amount: d('3000'),
       disposition: 'CARRY_OVER',
+      electedAt: null,
+      carryOverAppliedAt: null,
+      refundReceivedAt: null,
+      refundReference: null,
+      tccNumber: null,
+      tccAppliedAt: null,
       ...overrides.overpayment,
     },
   }
