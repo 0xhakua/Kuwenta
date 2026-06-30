@@ -103,8 +103,7 @@ Step 4 — Tax Year Initialization
 
 List view:
 - All 2307 certificates for the active taxable year
-- Grouped by quarter, then by payor
-- Columns: Payor Name, ATC Code, Quarter, Gross Income, CWT Withheld, Status
+- Grouped by quarter, then by payor (each payor gets a sub-header with name, TIN, and certificate count; rows show ATC, Gross, CWT, Status, Actions)
 - Add New Certificate button
 - Running totals at top: YTD Gross, YTD CWT, VAT Threshold %
 
@@ -119,7 +118,7 @@ Add/Edit Certificate modal:
 
 Consolidated Income Summary:
 - Table of all certificates: Quarter | Payor | ATC | Gross | CWT
-- Exportable as PDF (attached to 1701A)
+- "Export PDF" button downloads a printable, BIR-style summary attachable to 1701A (uses the active-year selector)
 
 ---
 
@@ -361,6 +360,7 @@ POST   /api/income              — Add new 2307 certificate (triggers recascade
 PUT    /api/income/[id]         — Amend certificate (triggers recascade)
 DELETE /api/income/[id]         — Remove certificate (triggers recascade)
 GET    /api/income/summary      — Consolidated income summary (all quarters, all payors)
+GET    /api/income/summary/export — Download consolidated income summary as PDF (attachable to 1701A)
 GET    /api/income/totals        — YTD totals: gross, CWT, VAT threshold %
 ```
 
