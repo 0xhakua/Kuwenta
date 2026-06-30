@@ -43,7 +43,7 @@ export interface Form2307Context {
 
 export interface TaxReturnContext {
   id: string
-  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A'
+  formType: 'FORM_2551Q' | 'FORM_1701Q' | 'FORM_1701A' | 'FORM_1701'
   quarter: number | null
   sequenceOrder: number
   status: 'BLOCKED' | 'PENDING' | 'GENERATED' | 'FILED'

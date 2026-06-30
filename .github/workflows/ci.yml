@@ -15,13 +15,8 @@ permissions:
   contents: read
 
 env:
- # Pinned to match the project's required Node version.
- NODE_VERSION: '20'
- # Public-safe test values. Override with repo secrets if you need real ones.
- TEST_DATABASE_URL: postgresql://kuwenta:kuwenta_dev@localhost:5432/kuwenta_test
- ADMIN_PASSWORD: admin1234!
- JWT_SECRET: test-jwt-secret-not-for-production
- STORAGE_PATH: ./storage
+  # Pinned to match the project's required Node version.
+  NODE_VERSION: '20'
 
 jobs:
   lint:
@@ -56,11 +51,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    # Public-safe test placeholders. These intentionally do not use
+    # ${{ env.X }} because the `env` context is not available inside a
+    # job-level `env:` block. Replace with secrets/vars when wiring real
+    # credentials.
     env:
-      DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
-      ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
-      JWT_SECRET: ${{ env.JWT_SECRET }}
-      STORAGE_PATH: ${{ env.STORAGE_PATH }}
+      DATABASE_URL: postgresql://kuwenta:kuwenta_dev@localhost:5432/kuwenta_test
+      ADMIN_PASSWORD: admin1234!
+      JWT_SECRET: test-jwt-secret-not-for-production
+      STORAGE_PATH: ./storage
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +71,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        # `migrate deploy` does not generate the Prisma client; tests that
+        # import from `@prisma/client` need the generated `.prisma/client`
+        # module to exist first.
+        run: pnpm prisma generate
       - name: Apply migrations
         run: pnpm prisma migrate deploy
       - name: Run tests
@@ -80,17 +84,13 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    # Build is informational until the pre-existing TS error in
-    # app/(dashboard)/dashboard/page.tsx is fixed (see #89). It still runs
-    # on every PR so we can see the red build and act on it.
-    continue-on-error: true
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       # Build does not need the database, but Prisma generate still runs
       # against the placeholder URL.
-      DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
-      JWT_SECRET: ${{ env.JWT_SECRET }}
-      ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
+      DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      JWT_SECRET: test-jwt-secret-not-for-production
+      ADMIN_PASSWORD: admin1234!
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -104,7 +104,6 @@ jobs:
       - run: pnpm prisma generate
       - name: Build
         # Next.js build emits expected Stellar / sodium-native webpack warnings
-        # (see CLAUDE.md). The job is marked continue-on-error above so the
-        # workflow stays green while a known TS error (#89) is open. Remove
-        # the continue-on-error once that issue is fixed.
+        # (see CLAUDE.md). They are non-fatal. The step still fails on real
+        # errors (TS errors, missing modules, etc).
         run: pnpm build

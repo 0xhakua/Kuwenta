@@ -62,7 +62,8 @@ export function generateOverpaymentEntries(
       },
     ]
     if (overpayment.carryOverAppliedAt) {
-      entries.push(generateCarryOverAppliedEntry(input))
+      const carryOverEntry = generateCarryOverAppliedEntry(input)
+      if (carryOverEntry) entries.push(carryOverEntry)
     }
     return entries
   }
@@ -93,7 +94,8 @@ export function generateOverpaymentEntries(
       },
     ]
     if (overpayment.refundReceivedAt) {
-      entries.push(generateRefundReceivedEntry(input))
+      const refundEntry = generateRefundReceivedEntry(input)
+      if (refundEntry) entries.push(refundEntry)
     }
     return entries
   }
@@ -124,7 +126,8 @@ export function generateOverpaymentEntries(
       },
     ]
     if (overpayment.tccAppliedAt) {
-      entries.push(generateTccAppliedEntry(input))
+      const tccEntry = generateTccAppliedEntry(input)
+      if (tccEntry) entries.push(tccEntry)
     }
     return entries
   }
