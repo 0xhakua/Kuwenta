@@ -54,6 +54,13 @@ export type ReturnForPenalty = {
 }
 
 /**
+ * Default compromise fee (₱1,000) used when no `RDOPenaltySchedule` row exists
+ * for the taxpayer's RDO. Mirrors the BIR's minimum compromise for individual
+ * taxpayers; admins can override per-RDO via the admin RDO-penalties screen.
+ */
+export const DEFAULT_COMPROMISE_FEE = new Decimal('1000')
+
+/**
  * Compute the tax-due base used for penalty calculations.
  *
  * This recomputes values fresh from certificate data so that penalties can be
@@ -129,6 +136,10 @@ export function computePenaltyBase(
 
 /**
  * Compute live penalties as of a specific filing date.
+ *
+ * The compromise fee is resolved from the `RDOPenaltySchedule` row matching
+ * `rdoCode`. If no schedule row exists (e.g. an unconfigured RDO), the fee
+ * falls back to `DEFAULT_COMPROMISE_FEE`.
  */
 export async function computePenaltyDetail(
   taxDue: Decimal,
@@ -138,7 +149,7 @@ export async function computePenaltyDetail(
 ): Promise<PenaltyDetail> {
   const daysLate = computeDaysLate(statutoryDueDate, filedDate)
   const schedule = await prisma.rDOPenaltySchedule.findUnique({ where: { rdoCode } })
-  const compromiseFee = schedule?.compromiseFee ?? new Decimal('1000')
+  const compromiseFee = schedule?.compromiseFee ?? DEFAULT_COMPROMISE_FEE
   const penalty = computePenalties({ taxDue, daysLate, compromiseFee })
 
   return {

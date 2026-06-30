@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import Decimal from 'decimal.js'
-import { computePenaltyBase } from '../penalty-base'
+import { computePenaltyBase, computePenaltyDetail, DEFAULT_COMPROMISE_FEE } from '../penalty-base'
 import type { TaxYearForPenalty, ReturnForPenalty } from '../penalty-base'
+import { prisma } from '@/lib/testing/db'
+import { createRDOPenaltySchedule } from '@/lib/testing/factories'
 
 const baseReturn = (overrides: Partial<ReturnForPenalty>): ReturnForPenalty => ({
   id: 'r1',
@@ -137,5 +139,73 @@ describe('computePenaltyBase — non-2551Q branches', () => {
     const result = computePenaltyBase(ret, ty, 'PURE_SELF_EMPLOYMENT')
     // 500,000 * 3% = 15,000
     expect(result.toString()).toBe('15000')
+  })
+})
+
+describe('computePenaltyDetail — RDOPenaltySchedule wiring', () => {
+  it('uses the seeded RDOPenaltySchedule compromiseFee (not the default)', async () => {
+    await createRDOPenaltySchedule({ rdoCode: '140', compromiseFee: 2500 })
+    const result = await computePenaltyDetail(
+      new Decimal('10000'),
+      new Date('2026-05-15'),
+      '140',
+      new Date('2026-06-14') // 30 days late
+    )
+    // Surcharge 10% of 10,000 = 1,000; interest 6% p.a. of 10,000 over 30 days ≈ 49.32;
+    // compromise 2,500. Total = 3,549.32.
+    expect(result.daysLate).toBe(30)
+    expect(result.surcharge.raw).toBe('1000.00')
+    expect(result.compromise.raw).toBe('2500.00')
+  })
+
+  it('falls back to DEFAULT_COMPROMISE_FEE when the RDO is not in the schedule', async () => {
+    const result = await computePenaltyDetail(
+      new Decimal('10000'),
+      new Date('2026-05-15'),
+      '999', // no RDOPenaltySchedule row for this code
+      new Date('2026-06-14') // 30 days late
+    )
+    expect(result.compromise.raw).toBe(DEFAULT_COMPROMISE_FEE.toFixed(2))
+    expect(DEFAULT_COMPROMISE_FEE.toString()).toBe('1000')
+  })
+
+  it('computes surcharge + interest + compromise from the scheduled fee on a late filing', async () => {
+    await createRDOPenaltySchedule({ rdoCode: '141', compromiseFee: 750 })
+    const result = await computePenaltyDetail(
+      new Decimal('20000'),
+      new Date('2026-05-15'),
+      '141',
+      new Date('2027-05-15') // 365 days late
+    )
+    // Surcharge 10% of 20,000 = 2,000; interest 6% p.a. of 20,000 = 1,200;
+    // compromise 750. Total = 3,950.
+    expect(result.daysLate).toBe(365)
+    expect(result.surcharge.raw).toBe('2000.00')
+    expect(result.interest.raw).toBe('1200.00')
+    expect(result.compromise.raw).toBe('750.00')
+    expect(result.total.raw).toBe('3950.00')
+  })
+
+  it('re-reads the schedule on every call (admin edits take effect immediately)', async () => {
+    await createRDOPenaltySchedule({ rdoCode: '142', compromiseFee: 1000 })
+    const first = await computePenaltyDetail(
+      new Decimal('0'),
+      new Date('2026-05-15'),
+      '142',
+      new Date('2026-05-16') // 1 day late so compromise applies
+    )
+    expect(first.compromise.raw).toBe('1000.00')
+
+    await prisma.rDOPenaltySchedule.update({
+      where: { rdoCode: '142' },
+      data: { compromiseFee: 2000 },
+    })
+    const second = await computePenaltyDetail(
+      new Decimal('0'),
+      new Date('2026-05-15'),
+      '142',
+      new Date('2026-05-16')
+    )
+    expect(second.compromise.raw).toBe('2000.00')
   })
 })
