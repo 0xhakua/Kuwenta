@@ -6,14 +6,6 @@ import { createTaxpayerWithYear, createATCCode, seedReferenceData } from '@/lib/
 import { signToken } from '@/lib/auth/session'
 import { VAT_THRESHOLD, VAT_WARNING_THRESHOLD } from '@/lib/computation/vat-threshold'
 
-function makeRequest(userId: string, body: object): NextRequest {
-  return new NextRequest('http://localhost/api/income', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
-
 describe('POST /api/income', () => {
   it('returns VAT status and records breach when threshold is crossed', async () => {
     await seedReferenceData()

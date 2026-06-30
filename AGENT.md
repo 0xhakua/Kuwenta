@@ -620,6 +620,7 @@ All computation functions must produce these exact outputs given these inputs.
 
 ---
 
+
 ## Running the Test Suite
 
 `pnpm test:run` runs the full CI verification in two phases. Both use `.env.test`
@@ -638,6 +639,45 @@ All computation functions must produce these exact outputs given these inputs.
 When you add a new pure computation function, add a case to
 `scripts/verify-computations.ts` so the reference scenario exercises it.
 
+
+---
+
+
+
+---
+
+## Clean-Clone Checklist
+
+`pnpm lint` and `pnpm build` must both exit 0 on a fresh checkout. CI runs
+them in this order; keep them green.
+
+- `pnpm lint` — exits 0 with **0 errors** (warnings may be present; see below).
+  As of this commit, the only warning is `'taxYear' is assigned a value but
+  never used` at `app/api/filing-package/download/__tests__/route.test.ts:160`
+  (S5.2 fixture) — the test destructures `taxYear` to keep the type
+  signature readable but does not read it. Fix the `_taxYear` rename if you
+  touch that file.
+- `pnpm build` — exits 0. The build emits three categories of warnings; all
+  are documented here so we do not waste a round-trip on them:
+
+  1. `Critical dependency: require function is used in a way in which
+     dependencies cannot be statically extracted` and
+     `Critical dependency: the request of a dependency is an expression`
+     from `sodium-native@4.3.3` / `require-addon@1.2.0` via
+     `@stellar/stellar-base@12.1.1`. Native module bundling — webpack cannot
+     statically analyse `require('bindings')` chains. Not actionable from
+     this repo.
+  2. `We detected multiple lockfiles and selected the directory of
+     <root>/pnpm-lock.yaml` — only fires when running inside a git
+     worktree (the worktree carries its own `pnpm-lock.yaml`). Not a
+     clean-clone concern; silence by setting `outputFileTracingRoot` in
+     `next.config.ts` if it ever becomes annoying.
+  3. Unused-variable warnings emitted by Next.js's own lint pass during
+     `next build` are a subset of the `pnpm lint` output; fix the upstream
+     rule, not the build warning.
+
+If you add a new dependency that introduces a new webpack or lint warning,
+add a one-line justification here so reviewers do not have to chase it.
 
 ---
 
