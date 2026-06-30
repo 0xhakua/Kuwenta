@@ -23,6 +23,7 @@ function buildIncomeRecognitionEntry(
     subsection: '9A',
     triggerEvent: event,
     triggerEntityId: input.certificate.id,
+    quarter: input.certificate.quarter,
     entryDate,
     regulationRef: 'RR No. 8-2018',
     workflowMenu: 'Income > Add 2307',

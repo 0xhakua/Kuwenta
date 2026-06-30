@@ -245,6 +245,7 @@ model JournalEntry {
   subsection      String        // "9A" through "9G"
   triggerEvent    String        // e.g. "2307_ADDED", "RETURN_1701Q_FILED"
   triggerEntityId String?       // ID of the 2307, return, or overpayment that triggered this
+  quarter         Int?          // 1-4 for quarterly entries (9A, 9B, 9C); null for annual (9D-9G)
   entryDate       DateTime
   lines           JournalLine[]
   regulationRef   String?       // e.g. "RR No. 8-2018"

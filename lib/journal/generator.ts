@@ -98,6 +98,7 @@ async function persistEntries(
         subsection: entry.subsection,
         triggerEvent: entry.triggerEvent,
         triggerEntityId: entry.triggerEntityId,
+        quarter: entry.quarter ?? null,
         entryDate: entry.entryDate,
         regulationRef: entry.regulationRef,
         workflowMenu: entry.workflowMenu,

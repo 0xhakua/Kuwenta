@@ -37,6 +37,7 @@ export interface JournalEntryInput {
   subsection: string
   triggerEvent: string
   triggerEntityId?: string
+  quarter?: number | null
   entryDate: Date
   regulationRef?: string
   workflowMenu?: string
