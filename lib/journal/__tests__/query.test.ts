@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildJournalListWhere,
+  hasFilterError,
   parseAccountNameFilter,
   parseQuarterFilter,
   parseSubsectionFilter,
@@ -122,5 +123,25 @@ describe('buildJournalListWhere', () => {
         some: { accountName: { contains: 'Service Income', mode: 'insensitive' } },
       },
     })
+  })
+})
+
+describe('hasFilterError', () => {
+  it('returns false for null (regression for issue #54)', () => {
+    expect(() => hasFilterError(null)).not.toThrow()
+    expect(hasFilterError(null)).toBe(false)
+  })
+
+  it('returns false for undefined', () => {
+    expect(hasFilterError(undefined)).toBe(false)
+  })
+
+  it('returns false for primitive filter values', () => {
+    expect(hasFilterError('9A')).toBe(false)
+    expect(hasFilterError(2)).toBe(false)
+  })
+
+  it('returns true for the { error } shape', () => {
+    expect(hasFilterError({ error: 'Invalid quarter: 9' })).toBe(true)
   })
 })

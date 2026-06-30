@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import {
   buildJournalListWhere,
+  hasFilterError,
   parseAccountNameFilter,
   parseQuarterFilter,
   parseSubsectionFilter,
@@ -21,13 +22,13 @@ export async function GET(
   try {
     const { subsection: subsectionParam } = await params
     const subsection = parseSubsectionFilter(subsectionParam)
-    if (typeof subsection === 'object' && 'error' in subsection) {
+    if (hasFilterError(subsection)) {
       return NextResponse.json({ error: subsection.error }, { status: 400 })
     }
 
     const url = new URL(req.url)
     const quarter = parseQuarterFilter(url.searchParams.get('quarter'))
-    if (typeof quarter === 'object' && 'error' in quarter) {
+    if (hasFilterError(quarter)) {
       return NextResponse.json({ error: quarter.error }, { status: 400 })
     }
     const accountName = parseAccountNameFilter(url.searchParams.get('accountName'))
