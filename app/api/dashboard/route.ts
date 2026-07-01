@@ -142,7 +142,9 @@ export async function GET(request: Request) {
       .filter((r) => r.status !== 'FILED')
       .slice(0, 3)
 
-    const annualReturn = taxYear.returns.find((r) => r.formType === 'FORM_1701A')
+    const annualReturn = taxYear.returns.find(
+      (r) => r.formType === 'FORM_1701A' || r.formType === 'FORM_1701'
+    )
     const annualPosition = annualReturn
       ? {
           taxDue: formatPeso(annualReturn.computedTaxDue),
@@ -180,6 +182,12 @@ export async function GET(request: Request) {
         totalCount,
         percent: totalCount > 0 ? Math.round((filedCount / totalCount) * 100) : 0,
       },
+      // S7.4 (#71): tell the dashboard which annual form applies so the
+      // UI can label it correctly. Mixed-income earners file Form 1701
+      // (BR-13); everyone else files Form 1701A.
+      annualFormType:
+        annualReturn?.formType ??
+        (profile.incomeType === 'MIXED_INCOME' ? 'FORM_1701' : 'FORM_1701A'),
       annualPosition,
       availableYears,
       activeYear,
