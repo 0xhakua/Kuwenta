@@ -4,6 +4,7 @@ import { Bell, Layers, Link2 } from 'lucide-react'
 import { getSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { SidebarNav } from './_components/sidebar-nav'
+import { UserMenu } from './_components/user-menu'
 
 export default async function DashboardLayout({
   children,
@@ -62,9 +63,7 @@ export default async function DashboardLayout({
             >
               <Bell className="size-5" />
             </button>
-            <div className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-              {session.username?.[0]?.toUpperCase() ?? 'U'}
-            </div>
+            <UserMenu username={session.username} role={session.role} />
           </div>
         </header>
 
