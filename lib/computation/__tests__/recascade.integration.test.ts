@@ -74,7 +74,12 @@ describe('recascadeTaxYear integration', () => {
     expect(penalizedReturns.length).toBeGreaterThan(0)
   })
 
-  it('nulls out 1701Q/1701A values under graduated rate', async () => {
+  it('populates 1701Q/1701A values under the graduated rate (S7.5)', async () => {
+    // S7.5 (#115): the recascade used to null out 1701Q and 1701A values
+    // when electedRate === 'GRADUATED' because the graduated computation
+    // was not yet implemented. After S6 the graduated path is implemented
+    // in quarterly-income.ts and annual-income.ts; the recascade now
+    // passes the elected rate through and populates the rows correctly.
     await seedReferenceData()
     const { profile, taxYear } = await createTaxpayerWithYear({
       year: 2026,
@@ -84,6 +89,10 @@ describe('recascadeTaxYear integration', () => {
 
     const atc = await createATCCode({ code: 'WI100' })
     await createRDOPenaltySchedule({ rdoCode: profile.rdoCode, compromiseFee: 500 })
+    // 100000 cumulative gross, no 250k exemption reduction. Under the
+    // graduated schedule the 100k sits in the 0% bracket (250k @ 0%),
+    // so the tax due is 0. We assert the recascade writes 0 (not null)
+    // so the dashboard and the filing flow can read the values.
     await createForm2307(taxYear.id, atc.code, {
       quarter: 1,
       quarterlyTotal: 100000,
@@ -98,15 +107,24 @@ describe('recascadeTaxYear integration', () => {
     })
 
     const q1_2551q = returns.find((r) => r.formType === 'FORM_2551Q' && r.quarter === 1)
+    // 2551Q is computed under the elected rate. Under 8% the percentage
+    // tax is 0 (BR-04), but under graduated the percentage tax is 3% of
+    // gross receipts, so this should be 3000.
     expect(q1_2551q?.computedTaxDue?.toString()).toBe('3000')
 
     const q1_1701q = returns.find((r) => r.formType === 'FORM_1701Q' && r.quarter === 1)
-    expect(q1_1701q?.computedTaxDue).toBeNull()
-    expect(q1_1701q?.netTaxDue).toBeNull()
+    // 100000 sits in the 250k @ 0% bracket, so tax due is 0. CWT
+    // exceeds tax due so the CWT is recorded as overpayment.
+    expect(q1_1701q?.computedTaxDue?.toString()).toBe('0')
+    expect(q1_1701q?.netTaxDue?.toString()).toBe('0')
+    expect(q1_1701q?.overpaymentAmt?.toString()).toBe('10000')
 
     const annual = returns.find((r) => r.formType === 'FORM_1701A')
-    expect(annual?.computedTaxDue).toBeNull()
-    expect(annual?.netTaxDue).toBeNull()
+    // Same graduated schedule: 100000 is still in the 0% bracket, so
+    // the annual tax due is 0 and the CWT is overpayment.
+    expect(annual?.computedTaxDue?.toString()).toBe('0')
+    expect(annual?.netTaxDue?.toString()).toBe('0')
+    expect(annual?.overpaymentAmt?.toString()).toBe('10000')
 
     // Penalties computed against zero tax due still include compromise fee
     expect(q1_1701q?.penalties?.totalPenalty.toString()).toBe('500')
@@ -194,5 +212,49 @@ describe('recascadeTaxYear integration', () => {
     expect(form1701?.taxCreditsTotal?.toString()).toBe('16000')
     expect(form1701?.netTaxDue?.toString()).toBe('0')
     expect(form1701?.overpaymentAmt?.toString()).toBe('0')
+  })
+
+  it('populates 1701Q values under GRADUATED at 600k cumulative gross (S7.5)', async () => {
+    // Reference figure from AGENT.md (GRADUATED_CUMULATIVE_MID):
+    // 600,000 cumulative gross → 20,000 cumulative tax due under the
+    // TRAIN graduated brackets. The 250k @ 0% bracket absorbs the first
+    // 250k of taxable income; the next 100k (250k-350k) falls in the
+    // 20% bracket = 20,000. (350k sits inside the 250k-400k band; the
+    // 25% bracket with a 30k base does not enter until 400k.)
+    await seedReferenceData()
+    const { profile, taxYear } = await createTaxpayerWithYear({
+      year: 2026,
+      electedRate: 'GRADUATED',
+      electionStatus: 'ELECTED_GRADUATED',
+    })
+
+    const atc = await createATCCode({ code: 'WI100' })
+    await createRDOPenaltySchedule({ rdoCode: profile.rdoCode, compromiseFee: 500 })
+    await createForm2307(taxYear.id, atc.code, {
+      quarter: 1,
+      quarterlyTotal: 600000,
+      cwtWithheld: 5000,
+    })
+
+    await recascadeTaxYear({ taxYearId: taxYear.id })
+
+    const q1_1701q = await prisma.taxReturn.findFirst({
+      where: { taxYearId: taxYear.id, formType: 'FORM_1701Q', quarter: 1 },
+    })
+    const annual = await prisma.taxReturn.findFirst({
+      where: { taxYearId: taxYear.id, formType: 'FORM_1701A' },
+    })
+
+    // Q1 cumulative tax due under the graduated bracket walk.
+    expect(q1_1701q?.computedTaxDue?.toString()).toBe('20000')
+    expect(q1_1701q?.taxCreditsTotal?.toString()).toBe('5000')
+    expect(q1_1701q?.netTaxDue?.toString()).toBe('15000')
+    expect(q1_1701q?.overpaymentAmt?.toString()).toBe('0')
+
+    // Annual slot has the same 600k of income (only one quarter reported
+    // so far); the tax due is the same as the Q1 cumulative figure, and
+    // credits consume the entire tax due (Q1 cash 15000 + CWT 5000).
+    expect(annual?.computedTaxDue?.toString()).toBe('20000')
+    expect(annual?.netTaxDue?.toString()).toBe('0')
   })
 })
