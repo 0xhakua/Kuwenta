@@ -25,6 +25,7 @@ export interface StellarHealth {
   horizonUrl: string
   reachable: boolean
   configured: boolean
+  latencyMs: number | null
   message: string
 }
 
@@ -38,8 +39,10 @@ export async function checkStellarHealth(): Promise<StellarHealth> {
   const network: 'testnet' | 'public' =
     process.env.STELLAR_NETWORK === 'mainnet' ? 'public' : 'testnet'
   const configured = Boolean(process.env.STELLAR_SECRET_KEY)
+  const startedAt = Date.now()
   try {
     const res = await fetch(url, { method: 'GET' })
+    const latencyMs = Date.now() - startedAt
     if (!res.ok) {
       return {
         ok: false,
@@ -47,6 +50,7 @@ export async function checkStellarHealth(): Promise<StellarHealth> {
         horizonUrl: url,
         reachable: false,
         configured,
+        latencyMs,
         message: `Horizon returned HTTP ${res.status}`,
       }
     }
@@ -58,6 +62,7 @@ export async function checkStellarHealth(): Promise<StellarHealth> {
       horizonUrl: url,
       reachable: true,
       configured,
+      latencyMs,
       message: `Horizon responsive (network ${reported})`,
     }
   } catch (err) {
@@ -67,6 +72,7 @@ export async function checkStellarHealth(): Promise<StellarHealth> {
       horizonUrl: url,
       reachable: false,
       configured,
+      latencyMs: Date.now() - startedAt,
       message: err instanceof Error ? err.message : 'Horizon unreachable',
     }
   }

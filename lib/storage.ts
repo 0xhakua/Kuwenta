@@ -70,3 +70,50 @@ export async function checkStorageHealth(): Promise<StorageHealth> {
     }
   }
 }
+
+export interface StorageStats {
+  path: string
+  type: string
+  writable: boolean
+  freeBytes: number | null
+  totalBytes: number | null
+  message: string
+  ok: boolean
+}
+
+/**
+ * Storage stats + health, with the disk's free space and total size.
+ * Used by the admin system-health panel.
+ *
+ * `statfs` is unavailable in older Node versions; we fall back to a soft
+ * warning so the panel still renders. The Railway / Linux hosts we target
+ * all have Node 20+ and the `statfs` function, so this is a safety net.
+ */
+export async function checkStorageStats(): Promise<StorageStats> {
+  const health = await checkStorageHealth()
+  let freeBytes: number | null = null
+  let totalBytes: number | null = null
+  try {
+    if (typeof fs.promises.statfs === 'function') {
+      const stats = await fs.promises.statfs(STORAGE_PATH)
+      freeBytes = Number(stats.bavail) * Number(stats.bsize)
+      totalBytes = Number(stats.blocks) * Number(stats.bsize)
+    } else {
+      // Last-ditch fallback for systems without statfs. The admin panel will
+      // show "n/a" for free space.
+    }
+  } catch (err) {
+    return {
+      ...health,
+      freeBytes: null,
+      totalBytes: null,
+      message: `${health.message} (stats: ${err instanceof Error ? err.message : 'unavailable'})`,
+    }
+  }
+  return {
+    ...health,
+    freeBytes,
+    totalBytes,
+    message: freeBytes === null ? health.message : health.message,
+  }
+}
