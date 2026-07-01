@@ -67,7 +67,11 @@ describe('/api/election', () => {
       where: { entityType: 'TaxYear', entityId: taxYear.id },
       orderBy: { createdAt: 'desc' },
     })
-    expect(audit?.action).toBe('8PCT_ELECTION_CONFIRMED')
+    // S6.4 follow-up: the audit action is now rate-agnostic. The rate
+    // itself lives in metadata.electedRate so the audit log viewer can
+    // still group and filter by rate.
+    expect(audit?.action).toBe('ELECTION_CONFIRMED')
+    expect((audit?.metadata as { electedRate?: string }).electedRate).toBe('RATE_8PCT')
     expect((audit?.metadata as { electionPath?: string }).electionPath).toBe('ITEM_13_2551Q_Q1')
     expect((audit?.metadata as { electionMethod?: string }).electionMethod).toBe('FORM_1905')
   })

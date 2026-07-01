@@ -357,23 +357,32 @@ export default function AuditLogPage() {
               <TableHead>Metadata</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {logs.map((log) => (
-              <TableRow key={log.id}>
-                <TableCell>
-                  {new Date(log.createdAt).toLocaleString('en-PH')}
-                </TableCell>
-                <TableCell>{log.username}</TableCell>
-                <TableCell>{log.action}</TableCell>
-                <TableCell>
-                  {log.entityType ? `${log.entityType} (${log.entityId ?? '—'})` : '—'}
-                </TableCell>
-                <TableCell className="max-w-md truncate font-mono text-xs">
-                  {log.metadata ? JSON.stringify(log.metadata) : '—'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+            <TableBody>
+              {logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell>
+                    {new Date(log.createdAt).toLocaleString('en-PH')}
+                  </TableCell>
+                  <TableCell>{log.username}</TableCell>
+                  <TableCell>
+                    {log.action}
+                    {log.action === 'ELECTION_CONFIRMED' && log.metadata && (
+                      <span className="ml-2 text-xs font-medium text-muted-foreground">
+                        (
+                        {(log.metadata as { electedRate?: string }).electedRate ?? 'no-rate'}
+                        )
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {log.entityType ? `${log.entityType} (${log.entityId ?? '—'})` : '—'}
+                  </TableCell>
+                  <TableCell className="max-w-md truncate font-mono text-xs">
+                    {log.metadata ? JSON.stringify(log.metadata) : '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
         </Table>
       )}
     </div>

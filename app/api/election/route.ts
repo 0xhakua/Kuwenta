@@ -164,7 +164,10 @@ export async function POST(req: NextRequest) {
       await tx.auditLog.create({
         data: {
           userId: session.sub,
-          action: '8PCT_ELECTION_CONFIRMED',
+          // Rate-agnostic action string: the elected rate is recorded in
+          // metadata.electedRate so the audit log viewer can still filter
+          // and group by rate. See #116.
+          action: 'ELECTION_CONFIRMED',
           entityType: 'TaxYear',
           entityId: taxYear.id,
           metadata: {
