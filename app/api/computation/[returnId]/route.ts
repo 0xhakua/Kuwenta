@@ -16,7 +16,7 @@ import { computeQuarterlyIncomeTaxBreakdown } from '@/lib/computation/quarterly-
 import { computeAnnualIncomeTaxBreakdown } from '@/lib/computation/annual-income'
 import { computePercentageTax } from '@/lib/computation/percentage-tax'
 import { computePenaltyBase, computeLivePenaltyDetail } from '@/lib/computation/penalty-base'
-import type { IncomeTypeValue } from '@/lib/computation/constants'
+import type { IncomeTypeValue, TaxRateValue } from '@/lib/computation/constants'
 
 type Money = { raw: string; formatted: string }
 
@@ -66,6 +66,7 @@ type ComputationResponse =
       formType: 'FORM_1701Q'
       quarter: number
       incomeType: IncomeTypeValue
+      electedRate: TaxRateValue
       cumulativeGross: Money
       exemption: Money
       taxableIncome: Money
@@ -80,8 +81,9 @@ type ComputationResponse =
     }
   | {
       returnId: string
-      formType: 'FORM_1701A'
+      formType: 'FORM_1701A' | 'FORM_1701'
       incomeType: IncomeTypeValue
+      electedRate: TaxRateValue
       fullYearGross: Money
       exemption: Money
       taxableIncome: Money
@@ -138,7 +140,12 @@ export async function GET(
       return NextResponse.json({ error: 'Return not found' }, { status: 404 })
     }
     const incomeType = taxYear.taxpayer.incomeType as IncomeTypeValue
-    const electedRate = taxYear.electedRate
+    // taxYear.electedRate is TaxRate | null (Prisma enum). Default to
+    // RATE_8PCT when no election has been recorded so the route returns
+    // a 2551Q explanation and 1701Q/1701A breakdown that match what
+    // the user sees on the dashboard before they elect a rate. See
+    // #115 / #122.
+    const electedRate: TaxRateValue = taxYear.electedRate ?? 'RATE_8PCT'
     const rdoCode = taxYear.taxpayer.rdoCode
 
     const quarterly = aggregateByQuarter(taxYear.certificates)
@@ -175,7 +182,8 @@ export async function GET(
       const breakdown = computeQuarterlyIncomeTaxBreakdown(
         cumulativeGross,
         priorQuartersTaxPaid,
-        incomeType
+        incomeType,
+        electedRate
       )
       const cumulativeCwt = sumCwtUpToQuarter(quarterly, quarter)
       const remainingTaxDueBeforeCwt = breakdown.netTaxDue
@@ -207,6 +215,7 @@ export async function GET(
         formType: 'FORM_1701Q',
         quarter,
         incomeType,
+        electedRate,
         cumulativeGross: money(breakdown.cumulativeGross),
         exemption: money(breakdown.exemption),
         taxableIncome: money(breakdown.taxableIncome),
@@ -220,7 +229,9 @@ export async function GET(
         sourceIncome,
       }
     } else {
-      // FORM_1701A
+      // FORM_1701A or FORM_1701 (mixed-income annual). The elected rate
+      // is threaded into computeAnnualIncomeTaxBreakdown so the live
+      // breakdown matches what the recascade writes to the row.
       const fullYearGross = sumFullYear(quarterly)
       const cwtWithheld = sumFullYearCwt(quarterly)
       const priorYearCredit = taxYear.priorYearCredit?.amount ?? new Decimal('0')
@@ -231,7 +242,8 @@ export async function GET(
         priorYearCredit,
         quarterlyPayments,
         cwtWithheld,
-        incomeType
+        incomeType,
+        electedRate
       )
 
       const netTaxDue = Decimal.max(breakdown.netPosition, 0)
@@ -266,8 +278,9 @@ export async function GET(
 
       response = {
         returnId: ret.id,
-        formType: 'FORM_1701A',
+        formType: ret.formType,
         incomeType,
+        electedRate,
         fullYearGross: money(breakdown.fullYearGross),
         exemption: money(breakdown.exemption),
         taxableIncome: money(breakdown.taxableIncome),

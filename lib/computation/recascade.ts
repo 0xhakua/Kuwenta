@@ -4,7 +4,7 @@ import { prisma } from '../prisma'
 import { computeAnnualIncomeTax, computeQuarterlyIncomeTax } from './income-tax'
 import { computePercentageTax } from './percentage-tax'
 import { computePenalties, computeDaysLate } from './penalties'
-import type { IncomeTypeValue } from './constants'
+import type { IncomeTypeValue, TaxRateValue } from './constants'
 import {
   aggregateByQuarter,
   sumUpToQuarter,
@@ -53,7 +53,12 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
   if (!taxYear) throw new Error(`Tax year not found: ${taxYearId}`)
 
   const incomeType: IncomeTypeValue = taxYear.taxpayer.incomeType
-  const electedRate = taxYear.electedRate
+  // taxYear.electedRate is TaxRate | null (Prisma enum). The compute
+  // functions take TaxRateValue, which is the same two-element string
+  // union. Default to RATE_8PCT when no election has been recorded so
+  // the recascade produces a value (the BIR default) rather than
+  // throwing on null. See #115 / #122.
+  const electedRate: TaxRateValue = taxYear.electedRate ?? 'RATE_8PCT'
 
   // Aggregate certificates by quarter
   const quarterly = aggregateByQuarter(taxYear.certificates)
@@ -77,34 +82,27 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
     await recomputePenalty(ret.id, taxDue, taxYear.taxpayer.rdoCode, db)
   }
 
-  // Recompute 1701Q returns (cumulative)
-  // Under the 8% flat rate (or before election preview) we use the 8% formulas.
-  // Graduated-rate computations are not yet implemented.
+  // Recompute 1701Q returns (cumulative).
+  // The elected rate is passed through to the underlying computation, so
+  // both the 8% flat-rate and the TRAIN graduated-rate paths are now
+  // populated. Pre-S7.5 this branch nulled out 1701Q values when the
+  // taxpayer had elected GRADUATED; that is no longer correct because
+  // the graduated computation is implemented in quarterly-income.ts.
   const quarterKeys = [1, 2, 3] as const
   let priorQuartersTaxPaid = new Decimal('0')
   let quarterlyPaymentsCash = new Decimal('0')
-  const useEightPctComputation = electedRate !== 'GRADUATED'
 
   for (const q of quarterKeys) {
     const ret = taxYear.returns.find((r) => r.formType === 'FORM_1701Q' && r.quarter === q)
     if (!ret) continue
 
-    if (!useEightPctComputation) {
-      await db.taxReturn.update({
-        where: { id: ret.id },
-        data: {
-          computedTaxDue: null,
-          taxCreditsTotal: null,
-          netTaxDue: null,
-          overpaymentAmt: null,
-        },
-      })
-      await recomputePenalty(ret.id, new Decimal('0'), taxYear.taxpayer.rdoCode, db)
-      continue
-    }
-
     const cumulativeGross = sumUpToQuarter(quarterly, q)
-    const taxDue = computeQuarterlyIncomeTax(cumulativeGross, priorQuartersTaxPaid, incomeType)
+    const taxDue = computeQuarterlyIncomeTax(
+      cumulativeGross,
+      priorQuartersTaxPaid,
+      incomeType,
+      electedRate
+    )
 
     const cumulativeCwt = sumCwtUpToQuarter(quarterly, q)
     const netTaxDue = Decimal.max(taxDue.minus(cumulativeCwt), 0)
@@ -129,47 +127,39 @@ export async function recascadeTaxYear({ taxYearId, tx }: RecascadeInput): Promi
     quarterlyPaymentsCash = quarterlyPaymentsCash.plus(netTaxDue)
   }
 
-  // Recompute 1701A / 1701 annual return
+  // Recompute 1701A / 1701 annual return. The elected rate is passed
+  // through to computeAnnualIncomeTax; graduated mixed-income earners
+  // get the TRAIN bracket walk, 8% electees get 8% of gross, and
+  // 1701A vs 1701 selection is already made at slot creation time
+  // (see lib/tax-year.ts).
   const annualReturn = taxYear.returns.find(
     (r) => r.formType === 'FORM_1701A' || r.formType === 'FORM_1701'
   )
   if (annualReturn) {
-    if (!useEightPctComputation) {
-      await db.taxReturn.update({
-        where: { id: annualReturn.id },
-        data: {
-          computedTaxDue: null,
-          taxCreditsTotal: null,
-          netTaxDue: null,
-          overpaymentAmt: null,
-        },
-      })
-      await recomputePenalty(annualReturn.id, new Decimal('0'), taxYear.taxpayer.rdoCode, db)
-    } else {
-      const fullYearGross = sumFullYear(quarterly)
-      const cwtWithheld = sumFullYearCwt(quarterly)
-      const priorYearCredit = taxYear.priorYearCredit?.amount ?? new Decimal('0')
+    const fullYearGross = sumFullYear(quarterly)
+    const cwtWithheld = sumFullYearCwt(quarterly)
+    const priorYearCredit = taxYear.priorYearCredit?.amount ?? new Decimal('0')
 
-      const { taxDue, totalCredits, netPosition } = computeAnnualIncomeTax(
-        fullYearGross,
-        priorYearCredit,
-        quarterlyPaymentsCash,
-        cwtWithheld,
-        incomeType
-      )
+    const { taxDue, totalCredits, netPosition } = computeAnnualIncomeTax(
+      fullYearGross,
+      priorYearCredit,
+      quarterlyPaymentsCash,
+      cwtWithheld,
+      incomeType,
+      electedRate
+    )
 
-      await db.taxReturn.update({
-        where: { id: annualReturn.id },
-        data: {
-          computedTaxDue: taxDue,
-          taxCreditsTotal: totalCredits,
-          netTaxDue: Decimal.max(netPosition, 0),
-          overpaymentAmt: Decimal.max(netPosition.negated(), 0),
-        },
-      })
+    await db.taxReturn.update({
+      where: { id: annualReturn.id },
+      data: {
+        computedTaxDue: taxDue,
+        taxCreditsTotal: totalCredits,
+        netTaxDue: Decimal.max(netPosition, 0),
+        overpaymentAmt: Decimal.max(netPosition.negated(), 0),
+      },
+    })
 
-      await recomputePenalty(annualReturn.id, Decimal.max(netPosition, 0), taxYear.taxpayer.rdoCode, db)
-    }
+    await recomputePenalty(annualReturn.id, Decimal.max(netPosition, 0), taxYear.taxpayer.rdoCode, db)
   }
 }
 
