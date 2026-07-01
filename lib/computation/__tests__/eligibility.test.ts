@@ -50,4 +50,51 @@ describe('checkEligibility', () => {
     expect(result.passed).toBe(false)
     expect(result.checks.noPriorQ1GraduatedReturn).toBe(false)
   })
+
+  it('lists both 8% and GRADUATED as eligible first-quarter election outcomes when all checks pass', () => {
+    const result = checkEligibility(baseInput)
+    expect(result.passed).toBe(true)
+    expect(result.eligibleRates).toEqual(['RATE_8PCT', 'GRADUATED'])
+  })
+
+  it('eligibility check is rate-agnostic: same result for either rate under consideration', () => {
+    // The function takes no `electedRate` argument because the 5-condition
+    // check is identical for both rates. Running it on the same inputs
+    // must yield identical `eligibleRates`, regardless of which rate the
+    // user is about to consider.
+    const passing = checkEligibility(baseInput)
+    const failing = checkEligibility({ ...baseInput, hasPriorQ1GraduatedReturn: true })
+
+    expect(passing.passed).toBe(true)
+    expect(passing.eligibleRates).toContain('RATE_8PCT')
+    expect(passing.eligibleRates).toContain('GRADUATED')
+
+    expect(failing.passed).toBe(false)
+    expect(failing.eligibleRates).toEqual([])
+  })
+
+  it('returns an empty eligibleRates list when any single condition fails', () => {
+    const failingInputs = [
+      { ...baseInput, isIndividual: false },
+      { ...baseInput, hasSelfEmploymentIncome: false },
+      { ...baseInput, isNonVatRegistered: false },
+      { ...baseInput, grossReceipts: d('3000000') },
+      { ...baseInput, hasPriorQ1GraduatedReturn: true },
+    ]
+
+    for (const input of failingInputs) {
+      const result = checkEligibility(input)
+      expect(result.passed).toBe(false)
+      expect(result.eligibleRates).toEqual([])
+    }
+  })
+
+  it('graduated is a valid outcome even when gross receipts are well below the VAT threshold', () => {
+    // Taxpayer at the small-freelancer end of the spectrum: still eligible
+    // for both rates, including graduated. The choice is the user's; this
+    // check does not pre-select 8% based on gross.
+    const result = checkEligibility({ ...baseInput, grossReceipts: d('100000') })
+    expect(result.passed).toBe(true)
+    expect(result.eligibleRates).toContain('GRADUATED')
+  })
 })
