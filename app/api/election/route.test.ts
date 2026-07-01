@@ -150,4 +150,39 @@ describe('/api/election', () => {
     expect(body.electionMethod).toBe('FORM_1905')
     expect(body.electionLockedAt).toBeTruthy()
   })
+
+  it('sets ELECTED_GRADUATED state when the user elects the graduated rate', async () => {
+    // Acceptance criterion for S6.4: the election API must accept
+    // `electedRate: 'GRADUATED'` and persist the matching ElectionStatus.
+    // The graduated path is the BIR default and does not require the
+    // 8% disclosures to be acknowledged (line 141 of route.ts only blocks
+    // disclosures for the 8% path).
+    const user = await createUser()
+    mockAuth(user.id)
+
+    const profile = await createTaxpayerProfile(user.id, {
+      corIncludes2551Q: true,
+    })
+    const taxYear = await createTaxYear(profile.id, 2026, {})
+    await initializeTaxYear(profile.id, 2026, true, [], prisma)
+
+    const res = await POST(
+      jsonRequest({
+        electedRate: 'GRADUATED',
+        disclosuresAcknowledged: true,
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.electedRate).toBe('GRADUATED')
+    expect(body.electionStatus).toBe('ELECTED_GRADUATED')
+    expect(body.electionPath).toBe('ITEM_13_2551Q_Q1')
+    expect(body.electionLockedAt).toBeTruthy()
+
+    const updated = await prisma.taxYear.findUnique({ where: { id: taxYear.id } })
+    expect(updated?.electedRate).toBe('GRADUATED')
+    expect(updated?.electionStatus).toBe('ELECTED_GRADUATED')
+    expect(updated?.electionLockedAt).toBeTruthy()
+  })
 })
