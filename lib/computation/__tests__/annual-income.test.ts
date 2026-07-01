@@ -176,3 +176,135 @@ describe('computeAnnualIncomeTax under GRADUATED election', () => {
     expect(result.electedRate).toBe('GRADUATED')
   })
 })
+
+describe('computeAnnualIncomeTax under OSD + GRADUATED', () => {
+  // OSD reference case: gross 2,000,000, no other inputs.
+  // OSD deduction 40% of gross = 800,000; taxable base = 800,000.
+  // TRAIN brackets on 800,000:
+  //   250,000 @ 0%   =       0
+  //   150,000 @ 20%  =  30,000  (250k-400k)
+  //   400,000 @ 25%  = 100,000  (400k-800k)
+  //                  = 130,000
+  it('OSD reference case: gross 2M -> tax due 130,000', () => {
+    const result = computeAnnualIncomeTax(
+      d('2000000'),
+      d('0'),
+      d('0'),
+      d('0'),
+      'PURE_SELF_EMPLOYMENT',
+      'GRADUATED',
+      true
+    )
+    expect(result.taxDue.toString()).toBe('130000')
+    expect(result.netPosition.toString()).toBe('130000')
+  })
+
+  it('OSD applies the 40% deduction before brackets (gross 1M -> 30,000)', () => {
+    // taxable = 1,000,000 * 0.40 = 400,000
+    // applyGraduatedBrackets(400,000) = 0 + (400,000 - 250,000) * 0.20 = 30,000
+    const result = computeAnnualIncomeTax(
+      d('1000000'),
+      d('0'),
+      d('0'),
+      d('0'),
+      'PURE_SELF_EMPLOYMENT',
+      'GRADUATED',
+      true
+    )
+    expect(result.taxDue.toString()).toBe('30000')
+  })
+
+  it('OSD replaces the 250k exemption for pure self-employment (no double-deduction)', () => {
+    const result = computeAnnualIncomeTaxBreakdown(
+      d('2000000'),
+      d('0'),
+      d('0'),
+      d('0'),
+      'PURE_SELF_EMPLOYMENT',
+      'GRADUATED',
+      true
+    )
+    // Exemption must be 0 under OSD even though incomeType is pure self-employment
+    expect(result.exemption.toString()).toBe('0')
+    // Taxable = 2M * 0.40 = 800,000
+    expect(result.taxableIncome.toString()).toBe('800000')
+    expect(result.taxDue.toString()).toBe('130000')
+    expect(result.osdElection).toBe(true)
+  })
+
+  it('OSD works for mixed-income earners (no exemption either way)', () => {
+    // gross 1M, OSD, mixed -> taxable = 1M * 0.40 = 400,000
+    // tax = applyGraduatedBrackets(400,000) = 30,000
+    const result = computeAnnualIncomeTax(
+      d('1000000'),
+      d('0'),
+      d('0'),
+      d('0'),
+      'MIXED_INCOME',
+      'GRADUATED',
+      true
+    )
+    expect(result.taxDue.toString()).toBe('30000')
+  })
+
+  it('OSD applies credits in BIR-prescribed order', () => {
+    // gross 2M, OSD, CWT 50,000
+    // taxDue 130,000; credits 50,000; net 80,000
+    const result = computeAnnualIncomeTax(
+      d('2000000'),
+      d('0'),
+      d('0'),
+      d('50000'),
+      'PURE_SELF_EMPLOYMENT',
+      'GRADUATED',
+      true
+    )
+    expect(result.taxDue.toString()).toBe('130000')
+    expect(result.totalCredits.toString()).toBe('50000')
+    expect(result.netPosition.toString()).toBe('80000')
+  })
+
+  it('OSD yields overpayment when credits exceed tax due', () => {
+    // gross 1M, OSD, CWT 100,000
+    // taxDue 30,000; credits 100,000; net -70,000
+    const result = computeAnnualIncomeTax(
+      d('1000000'),
+      d('0'),
+      d('0'),
+      d('100000'),
+      'PURE_SELF_EMPLOYMENT',
+      'GRADUATED',
+      true
+    )
+    expect(result.taxDue.toString()).toBe('30000')
+    expect(result.netPosition.toString()).toBe('-70000')
+  })
+
+  it('throws when OSD is combined with the 8% flat rate (NIRC Sec 24(A)(2))', () => {
+    expect(() =>
+      computeAnnualIncomeTax(
+        d('1000000'),
+        d('0'),
+        d('0'),
+        d('0'),
+        'PURE_SELF_EMPLOYMENT',
+        'RATE_8PCT',
+        true
+      )
+    ).toThrow(/OSD is not valid for 8% flat-rate electees/)
+  })
+
+  it('osdElection=false preserves the existing 8% behaviour (no exemption in mixed income)', () => {
+    const result = computeAnnualIncomeTax(
+      d('600000'),
+      d('0'),
+      d('0'),
+      d('0'),
+      'MIXED_INCOME',
+      'RATE_8PCT',
+      false
+    )
+    // 600000 * 0.08 = 48,000
+    expect(result.taxDue.toString()).toBe('48000')
+  })
+})

@@ -75,4 +75,18 @@ assertEqual(zeroTaxPenalties.surcharge, new Decimal('0.00'), 'Zero surcharge for
 assertEqual(zeroTaxPenalties.interest, new Decimal('0.00'), 'Zero interest for zero tax')
 assertEqual(zeroTaxPenalties.compromisePenalty, new Decimal('500.00'), 'Compromise applies even with zero tax')
 
+// OSD reference case: gross 2M, OSD, graduated, no credits.
+// OSD deduction 40% of gross = 800,000; taxable base = 800,000.
+// TRAIN brackets: 250k @0% + 150k @20% = 30,000 + 400k @25% = 100,000; total 130,000
+const osdAnnual = computeAnnualIncomeTax(
+  new Decimal('2000000'),
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  'PURE_SELF_EMPLOYMENT',
+  'GRADUATED',
+  true
+)
+assertEqual(osdAnnual.taxDue, new Decimal('130000.00'), 'OSD graduated tax due (gross 2M)')
+
 console.log('\nAll computation checks passed.')
