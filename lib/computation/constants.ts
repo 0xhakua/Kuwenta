@@ -9,6 +9,56 @@ export const EXEMPTION_250K = new Decimal('250000')
 export const VAT_THRESHOLD = new Decimal('3000000')
 export const EIGHT_PCT_RATE = new Decimal('0.08')
 
+/**
+ * TRAIN Law (RA 10963) graduated income tax brackets.
+ *
+ * Legal basis: NIRC Sec 24(A)(2)(a)-(f) as amended by RA 10963, effective
+ * January 1, 2018. Applies to self-employed individuals and professionals
+ * who do not elect the 8% flat rate.
+ *
+ * Each bracket is `lowerBound < taxableIncome <= upperBound` (top bracket is
+ * open-ended). `base` is the cumulative tax owed at `lowerBound` and is
+ * included for verification against the TRAIN schedule and for use by
+ * `applyGraduatedBrackets` so the call site never has to sum a long
+ * prefix of brackets manually.
+ */
+export interface TaxBracket {
+  lowerBound: Decimal
+  upperBound: Decimal | null
+  rate: Decimal
+  base: Decimal
+}
+
+export const TRAIN_BRACKETS: readonly TaxBracket[] = [
+  { lowerBound: new Decimal('0'), upperBound: new Decimal('250000'), rate: new Decimal('0'), base: new Decimal('0') },
+  { lowerBound: new Decimal('250000'), upperBound: new Decimal('400000'), rate: new Decimal('0.20'), base: new Decimal('0') },
+  { lowerBound: new Decimal('400000'), upperBound: new Decimal('800000'), rate: new Decimal('0.25'), base: new Decimal('30000') },
+  { lowerBound: new Decimal('800000'), upperBound: new Decimal('2000000'), rate: new Decimal('0.30'), base: new Decimal('130000') },
+  { lowerBound: new Decimal('2000000'), upperBound: new Decimal('8000000'), rate: new Decimal('0.32'), base: new Decimal('490000') },
+  { lowerBound: new Decimal('8000000'), upperBound: null, rate: new Decimal('0.35'), base: new Decimal('2410000') },
+] as const
+
+/**
+ * Apply the TRAIN graduated brackets to a positive taxable income.
+ *
+ * Returns 0 for taxable income at or below the 0% bracket. Negative inputs
+ * are clamped to 0 (callers must already have applied the 250k exemption or
+ * OSD reduction before reaching this function).
+ */
+export function applyGraduatedBrackets(taxableIncome: Decimal): Decimal {
+  const income = Decimal.max(taxableIncome, new Decimal('0'))
+  for (const bracket of TRAIN_BRACKETS) {
+    if (bracket.upperBound === null) {
+      return bracket.base.plus(income.minus(bracket.lowerBound).times(bracket.rate))
+    }
+    if (income.lessThanOrEqualTo(bracket.upperBound)) {
+      return bracket.base.plus(income.minus(bracket.lowerBound).times(bracket.rate))
+    }
+  }
+  // Unreachable: top bracket has upperBound === null
+  return new Decimal('0')
+}
+
 // Standard path (COR includes 2551Q) — 8 returns
 export const SEQUENCE_DEPENDENCIES_8: Record<number, number[]> = {
   1: [], // 2551Q Q1 — election on Item 13; no dependencies
