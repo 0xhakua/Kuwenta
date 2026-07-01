@@ -10,6 +10,14 @@ export const VAT_THRESHOLD = new Decimal('3000000')
 export const EIGHT_PCT_RATE = new Decimal('0.08')
 
 /**
+ * The two elected tax rates. Mirrors the Prisma `TaxRate` enum so that the
+ * same string literals are used end-to-end. Use this in computation
+ * signatures; use the `string | null` form only at the data-layer boundary
+ * where an election may not yet have been recorded.
+ */
+export type TaxRateValue = 'RATE_8PCT' | 'GRADUATED'
+
+/**
  * TRAIN Law (RA 10963) graduated income tax brackets.
  *
  * Legal basis: NIRC Sec 24(A)(2)(a)-(f) as amended by RA 10963, effective
