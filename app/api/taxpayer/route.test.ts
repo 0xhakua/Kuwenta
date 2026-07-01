@@ -107,4 +107,69 @@ describe('POST /api/taxpayer', () => {
     expect(json).not.toHaveProperty('_errors')
     expect(json.fieldErrors.tin).not.toHaveProperty('_errors')
   })
+
+  // S7.3 (#70): when COR does not include 2551Q, the taxpayer is on the
+  // 4-return path. The onboarding API must persist the flag and
+  // initialize exactly 4 TaxReturn slots (3 × 1701Q + 1 × 1701A/1701),
+  // not the 8-slot default. See BR-14.
+  it('initialises 4 return slots when corIncludes2551Q is false (S7.3 / BR-14)', async () => {
+    await seedReferenceData()
+    const user = await createUser()
+    const atc = await createATCCode({ code: 'WI997', ewtRate: 0.1 })
+
+    const req = await makeRequest(user.id, {
+      ...basePayload,
+      corIncludes2551Q: false,
+      atcCodes: [atc.code],
+    })
+
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.profile.corIncludes2551Q).toBe(false)
+
+    const taxYear = await prisma.taxYear.findFirst({
+      where: { taxpayerId: json.profile.id },
+      include: { returns: { orderBy: { sequenceOrder: 'asc' } } },
+    })
+    expect(taxYear).not.toBeNull()
+    expect(taxYear!.returns).toHaveLength(4)
+
+    // 4-return path: 1701Q Q1, Q2, Q3, then 1701A annual. No 2551Q slots.
+    expect(taxYear!.returns.map((r) => `${r.formType}:${r.quarter}`)).toEqual([
+      'FORM_1701Q:1',
+      'FORM_1701Q:2',
+      'FORM_1701Q:3',
+      'FORM_1701A:null',
+    ])
+    expect(taxYear!.returns.map((r) => r.sequenceOrder)).toEqual([1, 2, 3, 4])
+    expect(taxYear!.returns.find((r) => r.formType === 'FORM_2551Q')).toBeUndefined()
+  })
+
+  // S7.3: the inverse — when COR includes 2551Q, the 8-return path is
+  // used. This is the regression guard for the 4-return path test above.
+  it('initialises 8 return slots when corIncludes2551Q is true', async () => {
+    await seedReferenceData()
+    const user = await createUser()
+    const atc = await createATCCode({ code: 'WI996', ewtRate: 0.1 })
+
+    const req = await makeRequest(user.id, {
+      ...basePayload,
+      corIncludes2551Q: true,
+      atcCodes: [atc.code],
+    })
+
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+
+    const taxYear = await prisma.taxYear.findFirst({
+      where: { taxpayerId: json.profile.id },
+      include: { returns: { orderBy: { sequenceOrder: 'asc' } } },
+    })
+    expect(taxYear!.returns).toHaveLength(8)
+    expect(taxYear!.returns.find((r) => r.formType === 'FORM_2551Q' && r.quarter === 1)).toBeDefined()
+  })
 })
