@@ -242,7 +242,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') ?? ''
-    let rows: Array<{ date: string; name: string; year: number }>
+    let rows: Array<{ date: string; name: string; year?: number | string }>
     let mode: 'insert' | 'upsert' = 'insert'
 
     if (contentType.includes('text/csv') || contentType.includes('text/plain')) {
@@ -261,17 +261,19 @@ export async function PUT(req: NextRequest) {
           { status: 400 }
         )
       }
-      rows = matrix.slice(1).map((r) => {
-        const obj: Record<string, string> = {}
-        for (let i = 0; i < header.length; i++) obj[header[i]] = (r[i] ?? '').trim()
-        const rawYear = yearIdx === -1 ? '' : obj.year
-        const parsedYear = rawYear === '' ? undefined : Number(rawYear)
-        return {
-          date: obj.date ?? '',
-          name: obj.name ?? '',
-          year: parsedYear !== undefined && Number.isFinite(parsedYear) ? parsedYear : '',
-        }
-      })
+      const parsed: Array<{ date: string; name: string; year?: number | string }> =
+        matrix.slice(1).map((r) => {
+          const obj: Record<string, string> = {}
+          for (let i = 0; i < header.length; i++) obj[header[i]] = (r[i] ?? '').trim()
+          const rawYear = yearIdx === -1 ? '' : obj.year
+          const parsedYear = rawYear === '' ? undefined : Number(rawYear)
+          return {
+            date: obj.date ?? '',
+            name: obj.name ?? '',
+            year: parsedYear !== undefined && Number.isFinite(parsedYear) ? parsedYear : undefined,
+          }
+        })
+      rows = parsed
     } else {
       const json = await req.json()
       const result = bulkImportSchema.safeParse(json)
