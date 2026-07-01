@@ -10,6 +10,13 @@ export const VAT_THRESHOLD = new Decimal('3000000')
 export const EIGHT_PCT_RATE = new Decimal('0.08')
 
 /**
+ * Optional Standard Deduction rate. Per NIRC Sec 24(A)(2), an individual
+ * taxpayer on the graduated rate may elect a 40% OSD in lieu of itemised
+ * deductions. OSD is mutually exclusive with the 8% flat rate.
+ */
+export const OSD_RATE = new Decimal('0.40')
+
+/**
  * The two elected tax rates. Mirrors the Prisma `TaxRate` enum so that the
  * same string literals are used end-to-end. Use this in computation
  * signatures; use the `string | null` form only at the data-layer boundary
