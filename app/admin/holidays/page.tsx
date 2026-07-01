@@ -280,7 +280,7 @@ export default function AdminHolidaysPage() {
           <Label htmlFor="yearFilter">Filter by year</Label>
           <Select
             value={yearFilter}
-            onValueChange={(value) => setYearFilter(value)}
+            onValueChange={(value) => setYearFilter(value ?? ALL_YEARS)}
           >
             <SelectTrigger id="yearFilter">
               <SelectValue />
