@@ -4,6 +4,7 @@ import {
   computeQuarterlyIncomeTaxBreakdown,
 } from '../quarterly-income'
 import { d } from './helpers'
+import { GRADUATED_REFERENCE } from './reference-figures'
 
 describe('computeQuarterlyIncomeTax', () => {
   it('returns zero when cumulative gross is below the 250k exemption', () => {
@@ -109,5 +110,44 @@ describe('computeQuarterlyIncomeTax under GRADUATED election', () => {
   it('never returns negative net tax due', () => {
     // gross 800k, prior paid 200,000 -> 67,500 - 200,000 clamped to 0
     expect(computeQuarterlyIncomeTax(d('800000'), d('200000'), 'PURE_SELF_EMPLOYMENT', 'GRADUATED').toString()).toBe('0')
+  })
+})
+
+/**
+ * Reference figures — keep in sync with AGENT.md "Graduated Rate Reference
+ * Cases" and `lib/computation/__tests__/reference-figures.ts`.
+ */
+describe('computeQuarterlyIncomeTax reference figures (graduated)', () => {
+  it('GRADUATED_Q1_LOW: cumulative 200k -> 0', () => {
+    expect(
+      computeQuarterlyIncomeTax(
+        GRADUATED_REFERENCE.low.gross,
+        d('0'),
+        GRADUATED_REFERENCE.low.incomeType,
+        'GRADUATED'
+      ).equals(GRADUATED_REFERENCE.low.expectedTaxDue)
+    ).toBe(true)
+  })
+
+  it('GRADUATED_CUMULATIVE_MID: cumulative 600k -> 20,000', () => {
+    expect(
+      computeQuarterlyIncomeTax(
+        GRADUATED_REFERENCE.mid.gross,
+        d('0'),
+        GRADUATED_REFERENCE.mid.incomeType,
+        'GRADUATED'
+      ).equals(GRADUATED_REFERENCE.mid.expectedTaxDue)
+    ).toBe(true)
+  })
+
+  it('GRADUATED_CUMULATIVE_HIGH: cumulative 1.5M -> 265,000', () => {
+    expect(
+      computeQuarterlyIncomeTax(
+        GRADUATED_REFERENCE.high.gross,
+        d('0'),
+        GRADUATED_REFERENCE.high.incomeType,
+        'GRADUATED'
+      ).equals(GRADUATED_REFERENCE.high.expectedTaxDue)
+    ).toBe(true)
   })
 })
