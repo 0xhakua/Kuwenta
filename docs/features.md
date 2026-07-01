@@ -130,3 +130,163 @@ Each entry:
 - PR: `#27`
 - What changed: Fix #5: Stellar anchor value drops timestamp (64-char truncation).
 - Files touched: `SPEC.md`, `lib/stellar/__tests__/anchor.test.ts`, `lib/stellar/anchor.ts`
+
+### 2026-06-30 — PR #28 — Election Form 1905 path
+- PR: `#28`
+- What changed: Fix #4: Election Form 1905 path.
+- Files touched: `SPEC.md`, `app/api/election/route.test.ts`, `app/api/election/route.ts`, `app/election/page.tsx`, `lib/testing/factories.ts`, `prisma/migrations/20260629051946_add_election_method_to_tax_year/migration.sql`, `prisma/migrations/20260629123000_add_election_path_to_tax_year/migration.sql`, `prisma/schema.prisma`
+
+### 2026-06-30 — PR #49 — auto-generate docs/features.md from git history
+- PR: `#49`
+- What changed: chore(changelog): auto-generate docs/features.md from git history.
+- Files touched: `auto-dev.md`, `docs/features.md`, `package.json`, `scripts/sync-changelog.ts`
+
+### 2026-06-30 — PR #26 — BR-08 route mixed-income earners to Form 1701
+- PR: `#26`
+- What changed: Fix #3: BR-08 route mixed-income earners to Form 1701.
+- Files touched: `app/api/dashboard/route.ts`, `app/api/returns/[id]/file/route.ts`, `app/api/returns/[id]/generate/route.ts`, `app/api/taxpayer/route.ts`, `lib/__tests__/tax-year.test.ts`, `lib/computation/__tests__/due-dates.test.ts`, `lib/computation/constants.ts`, `lib/computation/due-dates.ts`, `lib/computation/recascade.ts`, `lib/pdf/dispatcher.tsx`, `lib/pdf/templates/form-1701.tsx`, `lib/tax-year.ts`, … (+4 more)
+
+### 2026-06-30 — PR #30 — SAWT: attachments endpoint, copy-email button, filing-package UI
+- PR: `#30`
+- What changed: Fix #8: SAWT: attachments endpoint, copy-email button, filing-package UI.
+- Files touched: `app/api/filing-package/route.ts`, `app/api/sawt/attachments/route.ts`, `app/sawt/page.tsx`, `lib/filing-package/attachments.ts`
+
+### 2026-06-30 — PR #37 — admin system-health panel (Stellar + storage + DB)
+- PR: `#37`
+- What changed: Fix #15: admin system-health panel (Stellar + storage + DB).
+- Files touched: `app/admin/page.tsx`, `app/admin/system-health/page.tsx`, `app/api/admin/system-health/route.ts`, `lib/__tests__/storage.test.ts`, `lib/stellar/client.ts`, `lib/storage.ts`
+
+### 2026-06-30 — PR #41 — thread active tax year through SAWT + filing-package routes
+- PR: `#41`
+- What changed: feat(api): thread active tax year through SAWT + filing-package routes (#22).
+- Files touched: `SPEC.md`, `app/api/filing-package/download/route.ts`, `app/api/filing-package/route.ts`, `app/api/sawt/export/route.ts`, `app/api/sawt/route.ts`, `lib/__tests__/active-year.test.ts`, `lib/active-year.ts`
+
+### 2026-06-30 — PR #43 — add disposition input + carry-over lineage chain
+- PR: `#43`
+- What changed: feat(prior-year-credit): add disposition input + carry-over lineage chain (#21).
+- Files touched: `app/api/prior-year-credit/route.ts`, `app/prior-year-credit/page.tsx`, `lib/__tests__/prior-year-credit-lineage.test.ts`, `lib/prior-year-credit-lineage.ts`
+
+### 2026-06-30 — PR #48 — align six pages to the shared page-chrome design
+- PR: `#48`
+- What changed: fix(ui): align six pages to the shared page-chrome design (#47).
+- Files touched: `app/returns/[id]/page.tsx`, `components/ui/page-header.tsx`, `components/ui/page-shell.tsx`
+
+### 2026-06-30 — PR #50 — drop duplicate /api/stellar/receipts/[txId] route
+- PR: `#50`
+- What changed: fix(api): drop duplicate /api/stellar/receipts/[txId] route.
+- Files touched: `SPEC.md`, `app/api/stellar/receipts/[txId]/route.ts`
+
+### 2026-06-30 — PR #52 — use \prisma migrate deploy\ in setup flow
+- PR: `#52`
+- What changed: docs: use \prisma migrate deploy\ in setup flow.
+- Files touched: `CLAUDE.md`, `README.md`
+
+### 2026-06-30 — PR #53 — adopt SF Pro as the system font
+- PR: `#53`
+- What changed: feat(ui): adopt SF Pro as the system font (#46).
+- Files touched: `BRAND.md`, `app/globals.css`, `app/layout.tsx`
+
+### 2026-06-30 — PR #55 — (1/2): /api/journal 500s on first load — guard filters against null
+- PR: `#55`
+- What changed: Fix #54 (1/2): /api/journal 500s on first load — guard filters against null.
+- Files touched: `app/api/admin/audit-log/route.ts`, `app/api/journal/[subsection]/route.ts`, `app/api/journal/route.ts`, `lib/journal/__tests__/query.test.ts`, `lib/journal/query.ts`
+
+### 2026-06-30 — PR #56 — (2/2): move authenticated pages into (dashboard) route group
+- PR: `#56`
+- What changed: Fix #54 (2/2): move authenticated pages into (dashboard) route group.
+- Files touched: `app/(dashboard)/election/page.tsx`, `app/(dashboard)/income/page.tsx`, `app/(dashboard)/journal/page.tsx`, `app/(dashboard)/onboarding/page.tsx`, `app/(dashboard)/prior-year-credit/page.tsx`, `app/(dashboard)/returns/[id]/page.tsx`, `app/(dashboard)/returns/page.tsx`, `app/(dashboard)/sawt/page.tsx`, `app/(dashboard)/stellar/page.tsx`
+
+### 2026-06-30 — PR #89 — add GitHub Actions for lint, test, build, and optional deploy
+- PR: `#89`
+- What changed: ci: add GitHub Actions for lint, test, build, and optional deploy (#88).
+- Files touched: `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, `README.md`
+
+### 2026-06-30 — PR #90 — fix env.X references in job-level env blocks (#88 follow-up)
+- PR: `#90`
+- What changed: ci: fix env.X references in job-level env blocks (#88 follow-up).
+- Files touched: `.github/workflows/ci.yml`, `app/(dashboard)/dashboard/page.tsx`, `lib/computation/penalty-base.ts`, `lib/filing-package/attachments.ts`, `lib/journal/entries/9f-overpayment.ts`, `lib/journal/query.ts`, `lib/journal/types.ts`, `scripts/sync-changelog.ts`
+
+### 2026-06-30 — PR #92 — S5.1 — Wire scripts/verify-computations.ts into pnpm test:run
+- PR: `#92`
+- What changed: Fix #57: S5.1 — Wire scripts/verify-computations.ts into pnpm test:run.
+- Files touched: `AGENT.md`, `package.json`
+
+### 2026-06-30 — PR #93 — S5.2 — Verify /api/filing-package/download produces a real ZIP
+- PR: `#93`
+- What changed: Fix #58: S5.2 — Verify /api/filing-package/download produces a real ZIP.
+- Files touched: `app/api/filing-package/download/__tests__/route.test.ts`
+
+### 2026-06-30 — PR #94 — S5.3 — Wire RDOPenaltySchedule into penalty-base.ts (test + named default)
+- PR: `#94`
+- What changed: Fix #59: S5.3 — Wire RDOPenaltySchedule into penalty-base.ts (test + named default).
+- Files touched: `lib/computation/__tests__/penalty-base.test.ts`, `lib/computation/penalty-base.ts`
+
+### 2026-06-30 — PR #95 — S5.4 - Exercise Windows STORAGE_PATH=./storage path
+- PR: `#95`
+- What changed: Fix #60: S5.4 - Exercise Windows STORAGE_PATH=./storage path.
+- Files touched: `AGENT.md`, `lib/__tests__/storage.test.ts`
+
+### 2026-06-30 — PR #96 — S5.5 - pnpm lint + pnpm build green on a clean clone
+- PR: `#96`
+- What changed: Fix #61: S5.5 - pnpm lint + pnpm build green on a clean clone.
+- Files touched: `AGENT.md`, `app/api/income/route.test.ts`
+
+### 2026-06-30 — PR #98 — Onboarding crashes on /api/taxpayer validation failure
+- PR: `#98`
+- What changed: Fix #97: Onboarding crashes on /api/taxpayer validation failure.
+- Files touched: `app/(dashboard)/onboarding/page.tsx`, `app/api/taxpayer/route.test.ts`, `app/api/taxpayer/route.ts`
+
+### 2026-06-30 — PR #100 — Regenerate Prisma client via postinstall so Railway build works
+- PR: `#100`
+- What changed: Fix #99: Regenerate Prisma client via postinstall so Railway build works.
+- Files touched: `AGENT.md`, `package.json`
+
+### 2026-06-30 — PR #103 — Onboarding shows the first field error instead of 'Validation failed'
+- PR: `#103`
+- What changed: Fix #101: Onboarding shows the first field error instead of 'Validation failed'.
+- Files touched: `app/(dashboard)/onboarding/page.tsx`, `lib/__tests__/api-error.test.ts`, `lib/api-error.ts`
+
+### 2026-06-30 — PR #104 — Structured login error + public /api/health for Railway diagnostics
+- PR: `#104`
+- What changed: Fix #102: Structured login error + public /api/health for Railway diagnostics.
+- Files touched: `app/api/auth/login/__tests__/route.test.ts`, `app/api/auth/login/route.ts`, `app/api/health/__tests__/route.test.ts`, `app/api/health/route.ts`, `docs/railway-env.md`
+
+### 2026-06-30 — PR #106 — pnpm db:migrate:deploy + triage guide for the 503 path
+- PR: `#106`
+- What changed: Fix #105: pnpm db:migrate:deploy + triage guide for the 503 path.
+- Files touched: `app/api/auth/login/__tests__/route.test.ts`, `docs/railway-env.md`, `package.json`
+
+### 2026-06-30 — PR #108 — Seed creates ATCCode rows before the taxpayers that reference them
+- PR: `#108`
+- What changed: Fix #107: Seed creates ATCCode rows before the taxpayers that reference them.
+- Files touched: `prisma/seed.ts`
+
+### 2026-07-01 — PR #109 — S6.1 - Add TRAIN graduated bracket table to lib/computation/constants.ts
+- PR: `#109`
+- What changed: Fix #62: S6.1 - Add TRAIN graduated bracket table to lib/computation/constants.ts.
+- Files touched: `lib/computation/__tests__/constants.test.ts`, `lib/computation/constants.ts`
+
+### 2026-07-01 — PR #110 — S6.2 - Branch quarterly/annual income tax on elected rate
+- PR: `#110`
+- What changed: Fix #63: S6.2 - Branch quarterly/annual income tax on elected rate.
+- Files touched: `lib/computation/__tests__/annual-income.test.ts`, `lib/computation/__tests__/quarterly-income.test.ts`, `lib/computation/annual-income.ts`, `lib/computation/constants.ts`, `lib/computation/quarterly-income.ts`
+
+### 2026-07-01 — PR #111 — S6.3 - OSD 40% support for 1701A
+- PR: `#111`
+- What changed: Fix #64: S6.3 - OSD 40% support for 1701A.
+- Files touched: `lib/computation/__tests__/annual-income.test.ts`, `lib/computation/annual-income.ts`, `lib/computation/constants.ts`, `scripts/verify-computations.ts`
+
+### 2026-07-01 — PR #112 — S6.4 - Update eligibility.ts for graduated as valid first-quarter election
+- PR: `#112`
+- What changed: Fix #65: S6.4 - Update eligibility.ts for graduated as valid first-quarter election.
+- Files touched: `app/api/election/route.test.ts`, `lib/computation/__tests__/eligibility.test.ts`, `lib/computation/eligibility.ts`
+
+### 2026-07-01 — PR #113 — S6.5 - Bracket + OSD test fixtures
+- PR: `#113`
+- What changed: Fix #66: S6.5 - Bracket + OSD test fixtures.
+- Files touched: `AGENT.md`, `lib/computation/__tests__/annual-income.test.ts`, `lib/computation/__tests__/quarterly-income.test.ts`, `lib/computation/__tests__/reference-figures.ts`, `scripts/verify-computations.ts`
+
+### 2026-07-01 — PR #114 — S6.6 - Verify /api/computation/preview works under graduated
+- PR: `#114`
+- What changed: Fix #67: S6.6 - Verify /api/computation/preview works under graduated.
+- Files touched: `app/api/computation/preview/__tests__/route.test.ts`, `app/api/computation/preview/route.ts`
