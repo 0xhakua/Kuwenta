@@ -172,10 +172,12 @@ sequenceDiagram
     API->>UI: Set-Cookie: kuwenta_session (httpOnly, secure, SameSite=Strict)
     UI->>MW: Subsequent request to protected route
     MW->>AUTH: verifyToken(cookie)
-    alt valid + role check passes
+    alt valid session and role check passes
         MW-->>UI: Request proceeds
-    else invalid / missing / wrong role
-        MW-->>UI: 401 (API) or redirect to /login (page); 403 for non-admin on /admin/*
+    else invalid or missing session
+        MW-->>UI: 401 Unauthorized for API routes, redirect to /login for pages
+    else valid session but non-admin on /admin route
+        MW-->>UI: 403 Forbidden
     end
 ```
 
@@ -183,9 +185,9 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor U as User (or Admin)
+    actor U as User or Admin
     participant UI as UI
-    participant API as /api/stellar/receipts/[id]/retry
+    participant API as Stellar Receipts API
     participant STELLAR as stellar/anchor.ts
     participant HORIZON as Stellar Horizon
     participant DB as PostgreSQL
