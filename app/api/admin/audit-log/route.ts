@@ -1,32 +1,12 @@
-import { NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { hasFilterError } from '@/lib/journal/query'
+import { buildAuditLogWhere, parseAuditLogFilters } from '@/lib/audit-log/filters'
 
 const MAX_LIMIT = 1000
-const DEFAULT_LIMIT = 500
-const ALLOWED_LIMITS = [100, 250, 500, 1000]
 
-function parseDate(value: string | null): Date | null | { error: string } {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return { error: `Invalid date: ${value}` }
-  }
-  return date
-}
-
-function parseLimit(value: string | null): number | { error: string } {
-  if (!value) return DEFAULT_LIMIT
-  const n = Number(value)
-  if (!Number.isInteger(n) || n <= 0 || n > MAX_LIMIT) {
-    return { error: `Invalid limit: ${value}` }
-  }
-  return ALLOWED_LIMITS.includes(n) ? n : Math.min(n, MAX_LIMIT)
-}
-
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const session = await requireAuth()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -38,56 +18,20 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url)
-    const userId = url.searchParams.get('userId')?.trim() || null
-    const username = url.searchParams.get('username')?.trim() || null
-    const action = url.searchParams.get('action')?.trim() || null
-    const entityType = url.searchParams.get('entityType')?.trim() || null
-    const entityId = url.searchParams.get('entityId')?.trim() || null
-    const from = parseDate(url.searchParams.get('from'))
-    const to = parseDate(url.searchParams.get('to'))
-    const limit = parseLimit(url.searchParams.get('limit'))
-
-    if (hasFilterError(from)) {
-      return NextResponse.json({ error: from.error }, { status: 400 })
-    }
-    if (hasFilterError(to)) {
-      return NextResponse.json({ error: to.error }, { status: 400 })
-    }
-    if (hasFilterError(limit)) {
-      return NextResponse.json({ error: limit.error }, { status: 400 })
+    const parsed = parseAuditLogFilters(url)
+    if (hasFilterError(parsed)) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
     }
 
-    const where: Prisma.AuditLogWhereInput = {}
-
-    if (userId) {
-      where.userId = userId
-    } else if (username) {
-      where.user = { username: { equals: username } }
-    }
-
-    if (action) {
-      where.action = { contains: action, mode: 'insensitive' }
-    }
-
-    if (entityType) {
-      where.entityType = { equals: entityType }
-    }
-
-    if (entityId) {
-      where.entityId = { equals: entityId }
-    }
-
-    if (from || to) {
-      where.createdAt = {}
-      if (from) where.createdAt.gte = from
-      if (to) where.createdAt.lte = to
-    }
+    // Cap the JSON response to 1000 rows; CSV export takes higher limits.
+    const filters = { ...parsed, limit: Math.min(parsed.limit, MAX_LIMIT) }
+    const where = buildAuditLogWhere(filters)
 
     const [logs, users, actions, entityTypes] = await Promise.all([
       prisma.auditLog.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        take: limit,
+        take: filters.limit,
         include: { user: { select: { username: true } } },
       }),
       prisma.user.findMany({
@@ -108,19 +52,19 @@ export async function GET(req: Request) {
     ])
 
     return NextResponse.json({
-      logs: logs.map((log: (typeof logs)[number]) => ({
+      logs: logs.map((log) => ({
         ...log,
         username: log.user.username,
       })),
       filters: {
-        userId,
-        username,
-        action,
-        entityType,
-        entityId,
-        from: from ? from.toISOString() : null,
-        to: to ? to.toISOString() : null,
-        limit,
+        userId: filters.userId,
+        username: filters.username,
+        action: filters.action,
+        entityType: filters.entityType,
+        entityId: filters.entityId,
+        from: filters.from ? filters.from.toISOString() : null,
+        to: filters.to ? filters.to.toISOString() : null,
+        limit: filters.limit,
       },
       options: {
         users,
