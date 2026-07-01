@@ -249,6 +249,33 @@ export default function OnboardingPage() {
                   <SelectItem value="MIXED_INCOME">Mixed Income (Salary + Freelance)</SelectItem>
                 </SelectContent>
               </Select>
+              {form.incomeType === 'MIXED_INCOME' && (
+                <div
+                  className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                  role="note"
+                  aria-label="Mixed income consequences"
+                >
+                  <p className="font-medium">Mixed-income consequences</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-5">
+                    <li>
+                      The ₱250,000 statutory exemption does not apply to your
+                      freelance income — it is already consumed by your
+                      compensation side.
+                    </li>
+                    <li>
+                      Your annual return will be <strong>Form 1701</strong>,
+                      not Form 1701A.
+                    </li>
+                    <li>
+                      Graduated rate and OSD (40%) election remain available
+                      for the 1701 path.
+                    </li>
+                  </ul>
+                  <p className="mt-2 text-xs text-amber-800">
+                    Legal basis: RR No. 8-2018 Sec. 3(D); RMC No. 50-2018.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>COR includes 2551Q?</Label>

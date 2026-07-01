@@ -67,6 +67,9 @@ type DashboardData = {
     netPosition: string
     overpayment: string
   } | null
+  // S7.4 (#71): which BIR form number the annual slot uses. Mixed-income
+  // earners file Form 1701, everyone else files Form 1701A.
+  annualFormType: 'FORM_1701A' | 'FORM_1701' | null
   availableYears: number[]
   activeYear: number | null
 }
@@ -161,7 +164,13 @@ export default function DashboardPage() {
     )
   }
 
-  const { taxpayer, taxYear, returns, ytd, upcoming, nextReturnId, progress, annualPosition, availableYears, activeYear } = data
+  const { taxpayer, taxYear, returns, ytd, upcoming, nextReturnId, progress, annualPosition, annualFormType, availableYears, activeYear } = data
+
+  // S7.4 (#71): the dashboard explicitly tells mixed-income earners they
+  // are on the Form 1701 (not 1701A) path. The label sits next to the
+  // annual-position card so the link to BR-13 is visible at a glance.
+  const annualFormLabel = annualFormType === 'FORM_1701' ? 'Form 1701' : 'Form 1701A'
+  const isMixedIncome = taxpayer.incomeType === 'MIXED_INCOME'
 
   return (
     <div className="space-y-6">
@@ -215,13 +224,22 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Annual Position</CardDescription>
+            <CardDescription>
+              Annual Position · {annualFormLabel}
+            </CardDescription>
             <CardTitle className="text-2xl">{annualPosition?.netPosition ?? '₱0.00'}</CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {annualPosition
-              ? `${annualPosition.overpayment} overpayment`
-              : 'No annual return computed yet'}
+          <CardContent className="space-y-1 text-xs text-muted-foreground">
+            {annualPosition ? (
+              <p>{annualPosition.overpayment} overpayment</p>
+            ) : (
+              <p>No annual return computed yet</p>
+            )}
+            {isMixedIncome && (
+              <p className="text-amber-700">
+                Mixed-income earners file {annualFormLabel}; the ₱250,000 exemption does not apply.
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>
