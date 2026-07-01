@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { formatPeso } from '@/lib/format'
 import { aggregateByQuarter, sumFullYear, sumFullYearCwt } from '@/lib/computation/aggregate'
 import { computeAnnualIncomeTaxBreakdown } from '@/lib/computation/annual-income'
-import type { IncomeTypeValue } from '@/lib/computation/constants'
+import type { IncomeTypeValue, TaxRateValue } from '@/lib/computation/constants'
 
 type Money = { raw: string; formatted: string }
 
@@ -51,12 +51,20 @@ export async function GET() {
 
     const taxYear = profile.taxYears[0]
     const incomeType = taxYear.taxpayer.incomeType as IncomeTypeValue
+    // Read the elected rate from the TaxYear so the preview matches the user's
+    // election. If no election has been recorded yet (NOT_ELECTED), default
+    // to the 8% flat rate — the BIR default, and what the dashboard and
+    // recascade paths will use once the election is confirmed.
+    const electedRate: TaxRateValue = taxYear.electedRate ?? 'RATE_8PCT'
 
     const quarterly = aggregateByQuarter(taxYear.certificates)
     const fullYearGross = sumFullYear(quarterly)
     const cwtWithheld = sumFullYearCwt(quarterly)
     const priorYearCredit = taxYear.priorYearCredit?.amount ?? new Decimal('0')
 
+    // Quarterly payments may be null on the TaxReturn row when the
+    // recascade hasn't populated them (e.g. a fresh graduated election
+    // before any 1701Q is generated). Treat null as zero.
     const quarterlyPayments = taxYear.returns.reduce(
       (sum, ret) => sum.plus(ret.netTaxDue ?? 0),
       new Decimal('0')
@@ -67,7 +75,8 @@ export async function GET() {
       priorYearCredit,
       quarterlyPayments,
       cwtWithheld,
-      incomeType
+      incomeType,
+      electedRate
     )
 
     const netTaxDue = Decimal.max(breakdown.netPosition, 0)
@@ -104,6 +113,7 @@ export async function GET() {
       preview: true,
       taxYear: taxYear.year,
       incomeType,
+      electedRate,
       fullYearGross: money(breakdown.fullYearGross),
       exemption: money(breakdown.exemption),
       taxableIncome: money(breakdown.taxableIncome),
