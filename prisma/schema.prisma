@@ -274,7 +274,7 @@ model AuditLog {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id])
-  action      String    // e.g. "8PCT_ELECTION_CONFIRMED", "RETURN_FILED", "STELLAR_ANCHORED"
+  action      String    // e.g. "ELECTION_CONFIRMED", "RETURN_FILED", "STELLAR_ANCHORED"
   entityType  String?   // e.g. "TaxReturn", "TaxYear"
   entityId    String?
   metadata    Json?
