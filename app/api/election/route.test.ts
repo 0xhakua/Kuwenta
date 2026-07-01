@@ -67,11 +67,13 @@ describe('/api/election', () => {
       where: { entityType: 'TaxYear', entityId: taxYear.id },
       orderBy: { createdAt: 'desc' },
     })
-    // S6.4 follow-up: the audit action is now rate-agnostic. The rate
-    // itself lives in metadata.electedRate so the audit log viewer can
-    // still group and filter by rate.
+    // S6.4 follow-up (#116): the audit action is now rate-agnostic. The
+    // rate itself lives in metadata.electedRate so the audit log viewer
+    // can still group and filter by rate.
+    // S7.6 (#117): osdElection is recorded in metadata too.
     expect(audit?.action).toBe('ELECTION_CONFIRMED')
     expect((audit?.metadata as { electedRate?: string }).electedRate).toBe('RATE_8PCT')
+    expect((audit?.metadata as { osdElection?: boolean }).osdElection).toBe(false)
     expect((audit?.metadata as { electionPath?: string }).electionPath).toBe('ITEM_13_2551Q_Q1')
     expect((audit?.metadata as { electionMethod?: string }).electionMethod).toBe('FORM_1905')
   })
@@ -183,10 +185,82 @@ describe('/api/election', () => {
     expect(body.electionStatus).toBe('ELECTED_GRADUATED')
     expect(body.electionPath).toBe('ITEM_13_2551Q_Q1')
     expect(body.electionLockedAt).toBeTruthy()
+    expect(body.osdElection).toBe(false)
 
     const updated = await prisma.taxYear.findUnique({ where: { id: taxYear.id } })
     expect(updated?.electedRate).toBe('GRADUATED')
     expect(updated?.electionStatus).toBe('ELECTED_GRADUATED')
     expect(updated?.electionLockedAt).toBeTruthy()
+    expect(updated?.osdElection).toBe(false)
+  })
+
+  // S7.6 (#117): the election API must accept `osdElection: true` and
+  // round-trip it through GET and the response body. OSD replaces the
+  // 250k exemption with a flat 40% deduction (NIRC Sec 24(A)(2)) and is
+  // valid only under the graduated rate.
+  it('persists osdElection=true on the graduated path (S7.6)', async () => {
+    const user = await createUser()
+    mockAuth(user.id)
+
+    const profile = await createTaxpayerProfile(user.id, {
+      corIncludes2551Q: true,
+    })
+    const taxYear = await createTaxYear(profile.id, 2026, {})
+    await initializeTaxYear(profile.id, 2026, true, [], prisma)
+
+    const res = await POST(
+      jsonRequest({
+        electedRate: 'GRADUATED',
+        disclosuresAcknowledged: true,
+        osdElection: true,
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.osdElection).toBe(true)
+    expect(body.electedRate).toBe('GRADUATED')
+
+    const updated = await prisma.taxYear.findUnique({ where: { id: taxYear.id } })
+    expect(updated?.osdElection).toBe(true)
+    expect(updated?.electedRate).toBe('GRADUATED')
+
+    // Round-trip through GET.
+    const getRes = await GET()
+    const getBody = await getRes.json()
+    expect(getBody.osdElection).toBe(true)
+  })
+
+  // S7.6 (#117): OSD is mutually exclusive with the 8% flat rate
+  // (NIRC Sec 24(A)(2)). The API must reject the combination with
+  // 400 and a clear message. The underlying computeAnnualIncomeTax
+  // function throws on this combination; the route catches the
+  // Zod-level guard before that.
+  it('rejects osdElection=true combined with electedRate=RATE_8PCT (S7.6)', async () => {
+    const user = await createUser()
+    mockAuth(user.id)
+
+    const profile = await createTaxpayerProfile(user.id, {
+      corIncludes2551Q: true,
+    })
+    await createTaxYear(profile.id, 2026, {})
+    await initializeTaxYear(profile.id, 2026, true, [], prisma)
+
+    const res = await POST(
+      jsonRequest({
+        electedRate: 'RATE_8PCT',
+        disclosuresAcknowledged: true,
+        osdElection: true,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    // The Zod superRefine surfaces a structured error with the
+    // NIRC Sec 24(A)(2) message in the osdElection field.
+    const formatted = body.error?.osdElection?._errors?.[0] ?? body.error?.osdElection?.[0]
+    expect(typeof formatted).toBe('string')
+    expect(formatted).toMatch(/OSD/)
+    expect(formatted).toMatch(/24\(A\)\(2\)/)
   })
 })

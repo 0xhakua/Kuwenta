@@ -24,6 +24,7 @@ type ElectionStatus = {
   electionMethod: ElectionPath
   electionDate: string | null
   electionLockedAt: string | null
+  osdElection: boolean
   canElect: boolean
   defaultElectionPath: ElectionPath
   firstReturnFiled: boolean
@@ -47,6 +48,10 @@ export default function ElectionPage() {
   const [status, setStatus] = useState<ElectionStatus | null>(null)
   const [selectedPath, setSelectedPath] = useState<ElectionPath | ''>('')
   const [selectedRate, setSelectedRate] = useState<'RATE_8PCT' | 'GRADUATED' | ''>('')
+  // S7.6 (#117): 40% Optional Standard Deduction election. Hidden when
+  // the chosen rate is 8% (mutually exclusive under NIRC Sec 24(A)(2));
+  // shown only under GRADUATED.
+  const [osdElection, setOsdElection] = useState(false)
   const [acknowledged, setAcknowledged] = useState<boolean[]>([false, false, false, false])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -67,6 +72,9 @@ export default function ElectionPage() {
           setSelectedPath(data.electionMethod || data.defaultElectionPath)
           if (data.electedRate) {
             setSelectedRate(data.electedRate)
+          }
+          if (typeof data.osdElection === 'boolean') {
+            setOsdElection(data.osdElection)
           }
         }
       } catch {
@@ -106,15 +114,16 @@ export default function ElectionPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/election', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          electedRate: selectedRate,
-          electionPath: selectedPath,
-          disclosuresAcknowledged: selectedRate === 'RATE_8PCT' ? allAcknowledged() : true,
-        }),
-      })
+    const res = await fetch('/api/election', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        electedRate: selectedRate,
+        electionPath: selectedPath,
+        disclosuresAcknowledged: selectedRate === 'RATE_8PCT' ? allAcknowledged() : true,
+        osdElection: selectedRate === 'GRADUATED' ? osdElection : false,
+      }),
+    })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Failed to record election')
@@ -242,6 +251,29 @@ export default function ElectionPage() {
                   </div>
                 </div>
               </RadioGroup>
+
+              {selectedRate === 'GRADUATED' && (
+                <div className="rounded-md border p-4">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="osd-election"
+                      checked={osdElection}
+                      onCheckedChange={(checked) => setOsdElection(checked === true)}
+                    />
+                    <div className="grid gap-1">
+                      <Label htmlFor="osd-election" className="font-medium">
+                        40% Optional Standard Deduction (OSD)
+                      </Label>
+                      <span className="text-sm text-muted-foreground">
+                        OSD replaces the ₱250,000 statutory exemption with a flat 40% deduction
+                        of gross receipts. Valid only under the graduated rate. The 8% flat rate
+                        is computed on gross receipts and does not allow itemised or standard
+                        deductions, so OSD is hidden when 8% is selected.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 

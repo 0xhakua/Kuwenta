@@ -73,6 +73,11 @@ model TaxYear {
   electionMethod   String?         // ITEM_13_2551Q_Q1 | ITEM_16_1701Q_Q1 | FORM_1905 (how the election was recorded)
   electionDate     DateTime?
   electionLockedAt DateTime?
+  // S7.6: 40% Optional Standard Deduction election. Mutually exclusive
+  // with the 8% flat rate (NIRC Sec 24(A)(2)). Only valid under the
+  // graduated rate. Default false so the migration is non-breaking
+  // (additive column, no destructive change).
+  osdElection      Boolean         @default(false)
   vatBreached     Boolean         @default(false)
   vatBreachDate   DateTime?
   certificates    Form2307[]

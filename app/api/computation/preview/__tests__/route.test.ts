@@ -275,4 +275,64 @@ describe('/api/computation/preview', () => {
     expect(body.quarterlyPayments.raw).toBe('0.00')
     expect(body.taxDue.raw).toBe('55000.00') // gross 750k -> taxable 500k -> 55,000
   })
+
+  // S7.6 (#117): 40% Optional Standard Deduction. The preview endpoint
+  // must read taxYear.osdElection and pass it to the underlying
+  // computeAnnualIncomeTaxBreakdown so the user sees the OSD-adjusted
+  // tax due before filing. Reference figure: 2,000,000 gross at 40%
+  // OSD = 800,000 taxable -> 30,000 + 400,000 * 0.25 = 130,000 (AGENT.md
+  // OSD_HIGH).
+  it('applies 40% OSD when osdElection=true and electedRate=GRADUATED', async () => {
+    const user = await createUser()
+    mockAuth(user.id)
+    const profile = await createTaxpayerProfile(user.id, {
+      incomeType: 'PURE_SELF_EMPLOYMENT',
+    })
+    const atc = await createATCCode({ code: ATC, description: 'Insurance', ewtRate: 0.1 })
+    const taxYear = await createTaxYear(profile.id, 2026, {
+      electedRate: 'GRADUATED',
+      electionStatus: 'ELECTED_GRADUATED',
+      electionLockedAt: new Date(),
+    })
+
+    // Persist osdElection=true on the TaxYear.
+    await prisma.taxYear.update({
+      where: { id: taxYear.id },
+      data: { osdElection: true },
+    })
+
+    // gross 2,000,000; split across two quarters to keep amounts realistic.
+    await createForm2307(taxYear.id, atc.code, {
+      quarter: 1,
+      payorTin: '111-111-111-111',
+      payorName: 'Payor A',
+      month1Amount: '500000',
+      month2Amount: '500000',
+      month3Amount: '500000',
+      quarterlyTotal: '1500000',
+      cwtWithheld: '150000',
+    })
+    await createForm2307(taxYear.id, atc.code, {
+      quarter: 2,
+      payorTin: '111-111-111-111',
+      payorName: 'Payor A',
+      month1Amount: '166666.67',
+      month2Amount: '166666.67',
+      month3Amount: '166666.66',
+      quarterlyTotal: '500000',
+      cwtWithheld: '50000',
+    })
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+
+    expect(body.electedRate).toBe('GRADUATED')
+    expect(body.osdElection).toBe(true)
+    // 2,000,000 * 0.40 = 800,000 taxable. 30,000 base + 400,000 * 0.25
+    // (the 400k-800k bracket walk) = 30,000 + 100,000 = 130,000.
+    expect(body.taxableIncome.raw).toBe('800000.00')
+    expect(body.exemption.raw).toBe('0.00')
+    expect(body.taxDue.raw).toBe('130000.00')
+  })
 })

@@ -56,6 +56,11 @@ export async function GET() {
     // to the 8% flat rate — the BIR default, and what the dashboard and
     // recascade paths will use once the election is confirmed.
     const electedRate: TaxRateValue = taxYear.electedRate ?? 'RATE_8PCT'
+    // S7.6 (#117): 40% Optional Standard Deduction. Defaults to false
+    // so the 250k 0% bracket is the standard graduated path. The
+    // election is mutually exclusive with the 8% flat rate; the
+    // election API enforces that, so the preview just reads the flag.
+    const osdElection = taxYear.osdElection
 
     const quarterly = aggregateByQuarter(taxYear.certificates)
     const fullYearGross = sumFullYear(quarterly)
@@ -76,7 +81,8 @@ export async function GET() {
       quarterlyPayments,
       cwtWithheld,
       incomeType,
-      electedRate
+      electedRate,
+      osdElection
     )
 
     const netTaxDue = Decimal.max(breakdown.netPosition, 0)
@@ -114,6 +120,7 @@ export async function GET() {
       taxYear: taxYear.year,
       incomeType,
       electedRate,
+      osdElection,
       fullYearGross: money(breakdown.fullYearGross),
       exemption: money(breakdown.exemption),
       taxableIncome: money(breakdown.taxableIncome),
