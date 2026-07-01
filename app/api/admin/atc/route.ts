@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Decimal from 'decimal.js'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 
@@ -32,23 +33,60 @@ function requireAdmin(session: Awaited<ReturnType<typeof requireAuth>>) {
   return null
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
 
   try {
+    const url = new URL(req.url)
+    const q = url.searchParams.get('q')?.trim() ?? ''
+    const includeInactive = url.searchParams.get('includeInactive') === 'true'
+    const lookupOnly = url.searchParams.get('lookup') === 'true'
+
+    const where: Prisma.ATCCodeWhereInput = {}
+    if (q) {
+      where.OR = [
+        { code: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ]
+    }
+    if (!includeInactive && !lookupOnly) {
+      where.isActive = true
+    }
+
     const codes = await prisma.aTCCode.findMany({
+      where,
       orderBy: { code: 'asc' },
     })
-    return NextResponse.json({ codes })
+
+    const usagePairs = await Promise.all(
+      codes.map((code) =>
+        Promise.all([
+          prisma.taxpayerATC.count({ where: { atcCode: code.code } }),
+          prisma.form2307.count({ where: { atcCode: code.code } }),
+        ])
+      )
+    )
+
+    const annotated = codes.map((code, i) => {
+      const [taxpayerCount, certificateCount] = usagePairs[i]
+      return {
+        ...code,
+        usageCount: taxpayerCount + certificateCount,
+        taxpayerCount,
+        certificateCount,
+      }
+    })
+
+    return NextResponse.json({ codes: annotated, q, includeInactive })
   } catch (err) {
     console.error('Admin list ATC error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
@@ -90,7 +128,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
@@ -124,7 +162,12 @@ export async function PATCH(req: Request) {
         action: 'ATC_UPDATED',
         entityType: 'ATCCode',
         entityId: code.code,
-        metadata: { description: code.description, ewtRate: code.ewtRate.toString(), isActive: code.isActive },
+        metadata: {
+          description: code.description,
+          ewtRate: code.ewtRate.toString(),
+          isActive: code.isActive,
+          previousIsActive: existing.isActive,
+        },
       },
     })
 
@@ -135,7 +178,7 @@ export async function PATCH(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
