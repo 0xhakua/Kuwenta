@@ -4,6 +4,7 @@ import {
   computeAnnualIncomeTaxBreakdown,
 } from '../annual-income'
 import { d } from './helpers'
+import { GRADUATED_REFERENCE, OSD_REFERENCE } from './reference-figures'
 
 describe('computeAnnualIncomeTax', () => {
   it('computes tax due above the 250k exemption', () => {
@@ -306,5 +307,72 @@ describe('computeAnnualIncomeTax under OSD + GRADUATED', () => {
     )
     // 600000 * 0.08 = 48,000
     expect(result.taxDue.toString()).toBe('48000')
+  })
+})
+
+/**
+ * Reference figures — keep in sync with AGENT.md "Reference Figures for
+ * Testing" and `lib/computation/__tests__/reference-figures.ts`.
+ */
+describe('computeAnnualIncomeTax reference figures (graduated + OSD)', () => {
+  it('GRADUATED_LOW: gross 200k -> 0', () => {
+    const result = computeAnnualIncomeTax(
+      GRADUATED_REFERENCE.low.gross,
+      d('0'),
+      d('0'),
+      d('0'),
+      GRADUATED_REFERENCE.low.incomeType,
+      'GRADUATED'
+    )
+    expect(result.taxDue.equals(GRADUATED_REFERENCE.low.expectedTaxDue)).toBe(true)
+  })
+
+  it('GRADUATED_MID: gross 600k -> 20,000', () => {
+    const result = computeAnnualIncomeTax(
+      GRADUATED_REFERENCE.mid.gross,
+      d('0'),
+      d('0'),
+      d('0'),
+      GRADUATED_REFERENCE.mid.incomeType,
+      'GRADUATED'
+    )
+    expect(result.taxDue.equals(GRADUATED_REFERENCE.mid.expectedTaxDue)).toBe(true)
+  })
+
+  it('GRADUATED_HIGH: gross 1.5M -> 265,000', () => {
+    const result = computeAnnualIncomeTax(
+      GRADUATED_REFERENCE.high.gross,
+      d('0'),
+      d('0'),
+      d('0'),
+      GRADUATED_REFERENCE.high.incomeType,
+      'GRADUATED'
+    )
+    expect(result.taxDue.equals(GRADUATED_REFERENCE.high.expectedTaxDue)).toBe(true)
+  })
+
+  it('GRADUATED_MIXED_MID: gross 500k mixed -> 55,000', () => {
+    const result = computeAnnualIncomeTax(
+      GRADUATED_REFERENCE.mixedMid.gross,
+      d('0'),
+      d('0'),
+      d('0'),
+      GRADUATED_REFERENCE.mixedMid.incomeType,
+      'GRADUATED'
+    )
+    expect(result.taxDue.equals(GRADUATED_REFERENCE.mixedMid.expectedTaxDue)).toBe(true)
+  })
+
+  it('OSD_HIGH: gross 2M, OSD, graduated -> 130,000', () => {
+    const result = computeAnnualIncomeTax(
+      OSD_REFERENCE.high.gross,
+      d('0'),
+      d('0'),
+      d('0'),
+      OSD_REFERENCE.high.incomeType,
+      'GRADUATED',
+      OSD_REFERENCE.high.osdElection
+    )
+    expect(result.taxDue.equals(OSD_REFERENCE.high.expectedTaxDue)).toBe(true)
   })
 })

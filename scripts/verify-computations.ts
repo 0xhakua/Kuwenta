@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js'
 import { computeAnnualIncomeTax, computeAnnualIncomeTaxBreakdown, computeQuarterlyIncomeTax } from '../lib/computation'
 import { computePenalties } from '../lib/computation/penalties'
+import { GRADUATED_REFERENCE, OSD_REFERENCE } from '../lib/computation/__tests__/reference-figures'
 
 const REFERENCE = {
   fullYearGross: new Decimal('187009.33'),
@@ -88,5 +89,87 @@ const osdAnnual = computeAnnualIncomeTax(
   true
 )
 assertEqual(osdAnnual.taxDue, new Decimal('130000.00'), 'OSD graduated tax due (gross 2M)')
+
+// ---------------------------------------------------------------------
+// Sprint-6 graduated + OSD reference figures (AGENT.md "Reference Figures")
+// Loaded from lib/computation/__tests__/reference-figures.ts so the table
+// in AGENT.md, this script, and the .test.ts files share one source.
+// ---------------------------------------------------------------------
+
+const gradLow = computeAnnualIncomeTax(
+  GRADUATED_REFERENCE.low.gross,
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  GRADUATED_REFERENCE.low.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradLow.taxDue, GRADUATED_REFERENCE.low.expectedTaxDue, 'Graduated LOW')
+
+const gradMid = computeAnnualIncomeTax(
+  GRADUATED_REFERENCE.mid.gross,
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  GRADUATED_REFERENCE.mid.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradMid.taxDue, GRADUATED_REFERENCE.mid.expectedTaxDue, 'Graduated MID')
+
+const gradHigh = computeAnnualIncomeTax(
+  GRADUATED_REFERENCE.high.gross,
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  GRADUATED_REFERENCE.high.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradHigh.taxDue, GRADUATED_REFERENCE.high.expectedTaxDue, 'Graduated HIGH')
+
+const gradMixedMid = computeAnnualIncomeTax(
+  GRADUATED_REFERENCE.mixedMid.gross,
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  GRADUATED_REFERENCE.mixedMid.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradMixedMid.taxDue, GRADUATED_REFERENCE.mixedMid.expectedTaxDue, 'Graduated MIXED MID')
+
+const osdHigh = computeAnnualIncomeTax(
+  OSD_REFERENCE.high.gross,
+  new Decimal('0'),
+  new Decimal('0'),
+  new Decimal('0'),
+  OSD_REFERENCE.high.incomeType,
+  'GRADUATED',
+  OSD_REFERENCE.high.osdElection
+)
+assertEqual(osdHigh.taxDue, OSD_REFERENCE.high.expectedTaxDue, 'OSD HIGH')
+
+// Quarterly graduated reference cases — cumulative gross drives the 1701Q.
+const gradCumLow = computeQuarterlyIncomeTax(
+  GRADUATED_REFERENCE.low.gross,
+  new Decimal('0'),
+  GRADUATED_REFERENCE.low.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradCumLow, GRADUATED_REFERENCE.low.expectedTaxDue, 'Graduated CUMULATIVE LOW')
+
+const gradCumMid = computeQuarterlyIncomeTax(
+  GRADUATED_REFERENCE.mid.gross,
+  new Decimal('0'),
+  GRADUATED_REFERENCE.mid.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradCumMid, GRADUATED_REFERENCE.mid.expectedTaxDue, 'Graduated CUMULATIVE MID')
+
+const gradCumHigh = computeQuarterlyIncomeTax(
+  GRADUATED_REFERENCE.high.gross,
+  new Decimal('0'),
+  GRADUATED_REFERENCE.high.incomeType,
+  'GRADUATED'
+)
+assertEqual(gradCumHigh, GRADUATED_REFERENCE.high.expectedTaxDue, 'Graduated CUMULATIVE HIGH')
 
 console.log('\nAll computation checks passed.')

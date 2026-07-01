@@ -618,6 +618,52 @@ const REFERENCE = {
 
 All computation functions must produce these exact outputs given these inputs.
 
+### Graduated Rate (TRAIN Law) Reference Cases
+
+The TRAIN Law (RA 10963) graduated brackets are exercised by these cases
+(legal basis: NIRC Sec 24(A) as amended). All inputs are
+`PURE_SELF_EMPLOYMENT` unless otherwise noted. The expected tax due
+comes from walking the bracket table; the work is in
+`applyGraduatedBrackets` in `lib/computation/constants.ts`.
+
+| Case                      | Gross         | Exemption / OSD        | Taxable       | Expected tax due |
+|---------------------------|---------------|------------------------|---------------|------------------|
+| `GRADUATED_LOW` (in 0%)   | `200,000.00`  | 0% bracket (250k)      | `0`           | `0.00`           |
+| `GRADUATED_MID` (20%)     | `600,000.00`  | -250,000 = `350,000`   | `350,000`     | `20,000.00`      |
+| `GRADUATED_HIGH` (30%)    | `1,500,000.00`| -250,000 = `1,250,000` | `1,250,000`   | `265,000.00`     |
+| `GRADUATED_MIXED_MID`     | `500,000.00`  | 0 (mixed income)       | `500,000`     | `55,000.00`      |
+
+Mid bracket walk: 250k @ 0% + 100k @ 20% (250k-350k) = 20,000.
+High bracket walk: 250k @ 0% + 150k @ 20% + 400k @ 25% + 450k @ 30%
+(800k-1.25M) = 0 + 30,000 + 100,000 + 135,000 = 265,000.
+Mixed-income walk: 250k @ 0% (exemption does not apply) + 100k @ 20%
+(250k-350k) + 100k @ 25% (400k-500k, after base of 30k) = 30,000 +
+20,000 + 5,000 (above base) = 55,000.
+
+### OSD (40% Optional Standard Deduction) Reference Case
+
+Per NIRC Sec 24(A)(2), the OSD replaces the ₱250,000 exemption with a
+flat 40% deduction. OSD is valid only under the graduated rate. Mutually
+exclusive with the 8% flat rate.
+
+| Case          | Gross         | OSD deduction (40%) | Taxable     | Expected tax due |
+|---------------|---------------|---------------------|-------------|------------------|
+| `OSD_HIGH`    | `2,000,000.00`| `800,000.00`        | `800,000`   | `130,000.00`     |
+
+Bracket walk: 250k @ 0% + 150k @ 20% + 400k @ 25% (to 800k) = 30,000 +
+100,000 = 130,000.
+
+### Quarterly (1701Q) Graduated Reference Cases
+
+Cumulative gross receipts drive the quarterly computation. The 250k 0%
+bracket still applies at the cumulative level.
+
+| Case                          | Cumulative gross | Expected cumulative tax due |
+|-------------------------------|------------------|------------------------------|
+| `GRADUATED_Q1_LOW`            | `200,000.00`     | `0.00`                       |
+| `GRADUATED_CUMULATIVE_MID`    | `600,000.00`     | `20,000.00`                  |
+| `GRADUATED_CUMULATIVE_HIGH`   | `1,500,000.00`   | `265,000.00`                 |
+
 ---
 
 
