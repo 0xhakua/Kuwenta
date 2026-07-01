@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: 'Account deactivated. Contact an administrator.', code: 'ACCOUNT_DEACTIVATED' },
+        { status: 403 }
+      )
+    }
+
     const valid = await verifyPassword(password, user.passwordHash)
     if (!valid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })

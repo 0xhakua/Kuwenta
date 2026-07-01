@@ -6,7 +6,7 @@ export function d(value: string | number) {
   return value
 }
 
-export async function createUser(overrides: Partial<{ username: string; password: string; role: 'ADMIN' | 'TAXPAYER' }> = {}) {
+export async function createUser(overrides: Partial<{ username: string; password: string; role: 'ADMIN' | 'TAXPAYER'; isActive: boolean }> = {}) {
   const username = overrides.username ?? `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const passwordHash = await bcrypt.hash(overrides.password ?? 'Test1234!', 12)
   return prisma.user.create({
@@ -14,6 +14,7 @@ export async function createUser(overrides: Partial<{ username: string; password
       username,
       passwordHash,
       role: overrides.role ?? 'TAXPAYER',
+      isActive: overrides.isActive ?? true,
     },
   })
 }

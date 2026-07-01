@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export interface JWTPayload {
   sub: string
@@ -85,11 +86,28 @@ export async function getSession(): Promise<JWTPayload | null> {
   return verifyToken(token)
 }
 
-export async function requireAuth(req?: NextRequest): Promise<JWTPayload | null> {
-  if (req) {
-    const token = req.cookies.get(COOKIE_NAME)?.value
-    if (!token) return null
-    return verifyToken(token)
+async function isUserActive(userId: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isActive: true },
+    })
+    return user?.isActive ?? false
+  } catch {
+    return false
   }
-  return getSession()
+}
+
+export async function requireAuth(req?: NextRequest): Promise<JWTPayload | null> {
+  const session = req
+    ? await verifyToken(req.cookies.get(COOKIE_NAME)?.value ?? '')
+    : await getSession()
+
+  if (!session) return null
+
+  // Deactivated users lose access immediately even if their JWT is still valid.
+  const active = await isUserActive(session.sub)
+  if (!active) return null
+
+  return session
 }
