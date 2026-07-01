@@ -1,17 +1,49 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Decimal from 'decimal.js'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 
 const upsertSchema = z.object({
-  rdoCode: z.string().min(1).max(10),
-  compromiseFee: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  rdoCode: z
+    .string()
+    .min(1)
+    .max(10)
+    .transform((v) => v.trim().toUpperCase()),
+  compromiseFee: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'compromiseFee must be a positive decimal with up to 2 places')
+    .refine(
+      (v) => {
+        try {
+          return new Decimal(v).greaterThan(0)
+        } catch {
+          return false
+        }
+      },
+      'compromiseFee must be greater than zero'
+    ),
 })
 
 const updateSchema = z.object({
   id: z.string().min(1),
-  compromiseFee: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  compromiseFee: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'compromiseFee must be a positive decimal with up to 2 places')
+    .refine(
+      (v) => {
+        try {
+          return new Decimal(v).greaterThan(0)
+        } catch {
+          return false
+        }
+      },
+      'compromiseFee must be greater than zero'
+    ),
+})
+
+const deleteSchema = z.object({
+  id: z.string().min(1),
 })
 
 function requireAdmin(session: Awaited<ReturnType<typeof requireAuth>>) {
@@ -40,7 +72,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
@@ -49,20 +81,23 @@ export async function POST(req: Request) {
     const body = await req.json()
     const result = upsertSchema.safeParse(body)
     if (!result.success) {
-      return NextResponse.json({ error: result.error.format() }, { status: 400 })
+      return NextResponse.json(
+        { error: result.error.issues[0]?.message ?? 'Invalid input' },
+        { status: 400 }
+      )
     }
 
     const { rdoCode, compromiseFee } = result.data
     const fee = new Decimal(compromiseFee)
 
     const existing = await prisma.rDOPenaltySchedule.findUnique({
-      where: { rdoCode: rdoCode.toUpperCase() },
+      where: { rdoCode },
     })
 
     const schedule = await prisma.rDOPenaltySchedule.upsert({
-      where: { rdoCode: rdoCode.toUpperCase() },
+      where: { rdoCode },
       create: {
-        rdoCode: rdoCode.toUpperCase(),
+        rdoCode,
         compromiseFee: fee,
       },
       update: {
@@ -76,7 +111,11 @@ export async function POST(req: Request) {
         action: existing ? 'RDO_PENALTY_UPDATED' : 'RDO_PENALTY_CREATED',
         entityType: 'RDOPenaltySchedule',
         entityId: schedule.id,
-        metadata: { rdoCode: schedule.rdoCode, compromiseFee: schedule.compromiseFee.toString() },
+        metadata: {
+          rdoCode: schedule.rdoCode,
+          compromiseFee: schedule.compromiseFee.toString(),
+          previousCompromiseFee: existing?.compromiseFee.toString() ?? null,
+        },
       },
     })
 
@@ -87,7 +126,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
   const session = await requireAuth()
   const denied = requireAdmin(session)
   if (denied) return denied
@@ -96,10 +135,18 @@ export async function PATCH(req: Request) {
     const body = await req.json()
     const result = updateSchema.safeParse(body)
     if (!result.success) {
-      return NextResponse.json({ error: result.error.format() }, { status: 400 })
+      return NextResponse.json(
+        { error: result.error.issues[0]?.message ?? 'Invalid input' },
+        { status: 400 }
+      )
     }
 
     const { id, compromiseFee } = result.data
+    const existing = await prisma.rDOPenaltySchedule.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'RDO schedule not found' }, { status: 404 })
+    }
+
     const schedule = await prisma.rDOPenaltySchedule.update({
       where: { id },
       data: { compromiseFee: new Decimal(compromiseFee) },
@@ -111,13 +158,60 @@ export async function PATCH(req: Request) {
         action: 'RDO_PENALTY_UPDATED',
         entityType: 'RDOPenaltySchedule',
         entityId: schedule.id,
-        metadata: { rdoCode: schedule.rdoCode, compromiseFee: schedule.compromiseFee.toString() },
+        metadata: {
+          rdoCode: schedule.rdoCode,
+          compromiseFee: schedule.compromiseFee.toString(),
+          previousCompromiseFee: existing.compromiseFee.toString(),
+        },
       },
     })
 
     return NextResponse.json({ schedule })
   } catch (err) {
     console.error('Admin update RDO penalty error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireAuth()
+  const denied = requireAdmin(session)
+  if (denied) return denied
+
+  try {
+    const body = await req.json()
+    const result = deleteSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error.issues[0]?.message ?? 'Invalid input' },
+        { status: 400 }
+      )
+    }
+
+    const { id } = result.data
+    const existing = await prisma.rDOPenaltySchedule.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'RDO schedule not found' }, { status: 404 })
+    }
+
+    await prisma.rDOPenaltySchedule.delete({ where: { id } })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session!.sub,
+        action: 'RDO_PENALTY_DELETED',
+        entityType: 'RDOPenaltySchedule',
+        entityId: id,
+        metadata: {
+          rdoCode: existing.rdoCode,
+          compromiseFee: existing.compromiseFee.toString(),
+        },
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Admin delete RDO penalty error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
