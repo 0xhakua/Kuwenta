@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -19,6 +20,7 @@ interface SystemHealth {
     horizonUrl: string
     reachable: boolean
     configured: boolean
+    latencyMs: number | null
     message: string
   }
   storage: {
@@ -26,9 +28,15 @@ interface SystemHealth {
     type: string
     path: string
     writable: boolean
+    freeBytes: number | null
+    totalBytes: number | null
     message: string
   }
-  database: { ok: boolean; message: string }
+  database: {
+    ok: boolean
+    message: string
+    migrations: { applied: number; pending: number; status: 'ok' | 'pending' | 'unknown' } | null
+  }
   checkedAt: string
 }
 
@@ -44,54 +52,93 @@ function badgeFor(ok: boolean, warnOnly = false) {
   return <Badge className={STATUS_BG.bad}>Down</Badge>
 }
 
+function formatBytes(bytes: number | null): string {
+  if (bytes === null || Number.isNaN(bytes)) return 'n/a'
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let n = bytes / 1024
+  let unitIndex = 0
+  while (n >= 1024 && unitIndex < units.length - 1) {
+    n /= 1024
+    unitIndex++
+  }
+  return `${n.toFixed(2)} ${units[unitIndex]}`
+}
+
+function formatLatency(ms: number | null): string {
+  if (ms === null) return 'n/a'
+  if (ms < 1000) return `${ms} ms`
+  return `${(ms / 1000).toFixed(2)} s`
+}
+
+function formatCheckedAt(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-PH')
+  } catch {
+    return iso
+  }
+}
+
+const REFRESH_MS = 30_000
+
 export default function SystemHealthPage() {
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [lastAutoRefreshAt, setLastAutoRefreshAt] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aliveRef = useRef(true)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/system-health')
+      const res = await fetch('/api/admin/system-health', { cache: 'no-store' })
       const data = await res.json()
+      if (!aliveRef.current) return
       if (!res.ok) {
         setError(data.error || 'Failed to load system health')
         return
       }
       setHealth(data)
-    } catch {
-      setError('Failed to load system health')
+    } catch (err) {
+      if (!aliveRef.current) return
+      setError(err instanceof Error ? err.message : 'Failed to load system health')
     } finally {
-      setLoading(false)
+      if (aliveRef.current) setLoading(false)
     }
-  }
+  }, [])
+
+  const scheduleAutoRefreshRef = useRef<() => void>(() => {})
+
+  const scheduleAutoRefresh = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      void (async () => {
+        await load()
+        setLastAutoRefreshAt(new Date().toISOString())
+        scheduleAutoRefreshRef.current()
+      })()
+    }, REFRESH_MS)
+  }, [load])
 
   useEffect(() => {
-    const controller = new AbortController()
+    scheduleAutoRefreshRef.current = scheduleAutoRefresh
+  }, [scheduleAutoRefresh])
+
+  useEffect(() => {
+    aliveRef.current = true
     void (async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const res = await fetch('/api/admin/system-health', {
-          signal: controller.signal,
-        })
-        const data = await res.json()
-        if (controller.signal.aborted) return
-        if (!res.ok) {
-          setError(data.error || 'Failed to load system health')
-          return
-        }
-        setHealth(data)
-      } catch (err) {
-        if (controller.signal.aborted) return
-        setError(err instanceof Error ? err.message : 'Failed to load system health')
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
-      }
+      await load()
+      if (!aliveRef.current) return
+      setLastAutoRefreshAt(new Date().toISOString())
+      scheduleAutoRefresh()
     })()
-    return () => controller.abort()
-  }, [])
+    return () => {
+      aliveRef.current = false
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [load, scheduleAutoRefresh])
 
   return (
     <div className="space-y-6">
@@ -99,15 +146,25 @@ export default function SystemHealthPage() {
         <div>
           <h1 className="text-2xl font-bold">System Health</h1>
           <p className="text-muted-foreground">
-            Stellar Horizon, storage backend, and database reachability.
+            Stellar Horizon, storage backend, and database reachability. Auto-refreshes
+            every {REFRESH_MS / 1000}s.
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin">
+            <Button variant="outline">← Back to Admin</Button>
+          </Link>
+          <Button variant="outline" onClick={load} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh now'}
+          </Button>
+        </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
 
       {health ? (
         <>
@@ -118,7 +175,12 @@ export default function SystemHealthPage() {
                 {badgeFor(health.ok)}
               </div>
               <CardDescription>
-                Last checked {new Date(health.checkedAt).toLocaleString('en-PH')}
+                Last checked {formatCheckedAt(health.checkedAt)}
+                {lastAutoRefreshAt && lastAutoRefreshAt !== health.checkedAt && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (auto-refresh scheduled)
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -137,7 +199,7 @@ export default function SystemHealthPage() {
                   <CardTitle className="text-base">Stellar</CardTitle>
                   {badgeFor(health.stellar.ok, !health.stellar.configured)}
                 </div>
-                <CardDescription>Hedera-style anchoring endpoint</CardDescription>
+                <CardDescription>Anchoring endpoint</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <Row label="Network" value={health.stellar.network} />
@@ -145,6 +207,10 @@ export default function SystemHealthPage() {
                 <Row
                   label="Reachable"
                   value={health.stellar.reachable ? 'Yes' : 'No'}
+                />
+                <Row
+                  label="Latency"
+                  value={formatLatency(health.stellar.latencyMs)}
                 />
                 <Row
                   label="Signing key configured"
@@ -166,6 +232,14 @@ export default function SystemHealthPage() {
                 <Row label="Type" value={health.storage.type} />
                 <Row label="Path" value={health.storage.path} />
                 <Row
+                  label="Free space"
+                  value={formatBytes(health.storage.freeBytes)}
+                />
+                <Row
+                  label="Total size"
+                  value={formatBytes(health.storage.totalBytes)}
+                />
+                <Row
                   label="Writable"
                   value={health.storage.writable ? 'Yes' : 'No'}
                 />
@@ -182,7 +256,24 @@ export default function SystemHealthPage() {
                 <CardDescription>PostgreSQL via Prisma</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <Row label="Status" value={health.database.ok ? 'Reachable' : 'Down'} />
+                <Row
+                  label="Status"
+                  value={health.database.ok ? 'Reachable' : 'Down'}
+                />
+                <Row
+                  label="Migrations"
+                  value={
+                    health.database.migrations
+                      ? `${health.database.migrations.applied} applied` +
+                        (health.database.migrations.pending > 0
+                          ? `, ${health.database.migrations.pending} pending`
+                          : '') +
+                        (health.database.migrations.status === 'unknown'
+                          ? ' (status unknown)'
+                          : '')
+                      : 'n/a'
+                  }
+                />
                 <Row label="Message" value={health.database.message} />
               </CardContent>
             </Card>
