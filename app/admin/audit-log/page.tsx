@@ -163,6 +163,23 @@ export default function AuditLogPage() {
     setPendingFilters({ ...UNFILTERED, limit: pendingFilters.limit })
   }
 
+  function buildExportUrl(f: AuditLogFilters): string {
+    const params = new URLSearchParams()
+    if (f.userId) params.set('userId', f.userId)
+    if (f.username) params.set('username', f.username)
+    if (f.action) params.set('action', f.action)
+    if (f.entityType) params.set('entityType', f.entityType)
+    if (f.entityId) params.set('entityId', f.entityId)
+    if (f.from) params.set('from', f.from)
+    if (f.to) params.set('to', f.to)
+    return `/api/admin/audit-log/export?${params.toString()}`
+  }
+
+  function exportCsv() {
+    if (typeof window === 'undefined') return
+    window.open(buildExportUrl(filters), '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -205,6 +222,23 @@ export default function AuditLogPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Actor (username)
+            </label>
+            <Input
+              type="text"
+              value={pendingFilters.username ?? ''}
+              placeholder="e.g. admin"
+              onChange={(e) =>
+                setPendingFilters((prev) => ({
+                  ...prev,
+                  username: e.target.value || null,
+                  userId: e.target.value ? null : prev.userId,
+                }))
+              }
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -336,6 +370,14 @@ export default function AuditLogPage() {
               Clear filters
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={exportCsv}
+            disabled={logs.length === 0}
+            title="Download the current filter as CSV"
+          >
+            Export CSV
+          </Button>
           <span className="ml-auto self-center text-xs text-muted-foreground">
             Showing {logs.length} entr{logs.length === 1 ? 'y' : 'ies'}
           </span>
