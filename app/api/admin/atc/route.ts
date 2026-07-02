@@ -5,21 +5,21 @@ import { Prisma } from '@prisma/client'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 
-const createSchema = z.object({
+export const createSchema = z.object({
   code: z.string().min(1).max(10),
   description: z.string().min(1).max(255),
   ewtRate: z.string().regex(/^\d+(\.\d{1,4})?$/),
   isActive: z.boolean().default(true),
 })
 
-const updateSchema = z.object({
+export const updateSchema = z.object({
   code: z.string().min(1).max(10),
   description: z.string().min(1).max(255).optional(),
   ewtRate: z.string().regex(/^\d+(\.\d{1,4})?$/).optional(),
   isActive: z.boolean().optional(),
 })
 
-const deleteSchema = z.object({
+export const deleteSchema = z.object({
   code: z.string().min(1).max(10),
 })
 

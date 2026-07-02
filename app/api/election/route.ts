@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
 import { canElect } from '@/lib/election-rules'
 
-const electionSchema = z
+export const electionSchema = z
   .object({
     electedRate: z.enum(['RATE_8PCT', 'GRADUATED']),
     electionPath: z.enum(['ITEM_13_2551Q_Q1', 'ITEM_16_1701Q_Q1', 'FORM_1905']).optional(),

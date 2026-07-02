@@ -5,16 +5,16 @@ import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { getDueDatesForYear } from '@/lib/computation/due-dates'
 
-const createSchema = z.object({
+export const createSchema = z.object({
   date: z.string().date(),
   name: z.string().min(1).max(255),
 })
 
-const deleteSchema = z.object({
+export const deleteSchema = z.object({
   id: z.string().min(1),
 })
 
-const bulkRowSchema = z
+export const bulkRowSchema = z
   .object({
     date: z.string().date(),
     name: z.string().min(1).max(255),
@@ -34,7 +34,7 @@ const bulkRowSchema = z
     year: v.year ?? new Date(v.date).getUTCFullYear(),
   }))
 
-const bulkImportSchema = z.object({
+export const bulkImportSchema = z.object({
   rows: z.array(bulkRowSchema).min(1).max(500),
   mode: z.enum(['insert', 'upsert']).default('insert'),
 })

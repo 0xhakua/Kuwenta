@@ -7,7 +7,7 @@ import { recascadeTaxYear } from '@/lib/computation/recascade'
 import { checkAndRecordVatBreach } from '@/lib/computation/vat-threshold'
 import { generateIncomeRecognitionJournal } from '@/lib/journal/generator'
 
-const certificateSchema = z.object({
+export const certificateSchema = z.object({
   quarter: z.number().int().min(1).max(4),
   payorTin: z.string().min(1),
   payorName: z.string().min(1),

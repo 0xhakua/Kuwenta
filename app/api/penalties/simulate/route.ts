@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { computePenaltyBase, computePenaltyDetail } from '@/lib/computation/penalty-base'
 import type { IncomeTypeValue } from '@/lib/computation/constants'
 
-const simulateSchema = z.object({
+export const simulateSchema = z.object({
   returnId: z.string().min(1),
   filedDate: z.string().date(),
 })

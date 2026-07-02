@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-const patchSchema = z.object({
+export const patchSchema = z.object({
   userId: z.string().min(1),
   isActive: z.boolean(),
 })
@@ -134,7 +134,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-const resetSchema = z.object({
+export const resetSchema = z.object({
   userId: z.string().min(1),
 })
 

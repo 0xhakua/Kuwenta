@@ -11,7 +11,7 @@ import {
 import { resolveTaxYearFromRequest, setActiveYearCookie } from '@/lib/active-year'
 import { buildLineage, type LineageCredit } from '@/lib/prior-year-credit-lineage'
 
-const createSchema = z.object({
+export const createSchema = z.object({
   amount: z.union([z.string(), z.number()]).transform((v) => String(v)),
   originYear: z.number().int(),
   originForm: z.string().min(1),

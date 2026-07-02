@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 
-const upsertSchema = z.object({
+export const upsertSchema = z.object({
   rdoCode: z
     .string()
     .min(1)
@@ -25,7 +25,7 @@ const upsertSchema = z.object({
     ),
 })
 
-const updateSchema = z.object({
+export const updateSchema = z.object({
   id: z.string().min(1),
   compromiseFee: z
     .string()
@@ -42,7 +42,7 @@ const updateSchema = z.object({
     ),
 })
 
-const deleteSchema = z.object({
+export const deleteSchema = z.object({
   id: z.string().min(1),
 })
 

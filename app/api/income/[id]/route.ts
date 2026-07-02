@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { recascadeTaxYear } from '@/lib/computation/recascade'
 import { generateIncomeRecognitionJournal } from '@/lib/journal/generator'
 
-const certificateSchema = z.object({
+export const certificateUpdateSchema = z.object({
   quarter: z.number().int().min(1).max(4).optional(),
   payorTin: z.string().min(1).optional(),
   payorName: z.string().min(1).optional(),

@@ -5,11 +5,11 @@ import { requireAuth } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { generateOverpaymentJournal } from '@/lib/journal/generator'
 
-const dispositionSchema = z.object({
+export const dispositionSchema = z.object({
   disposition: z.enum(['CARRY_OVER', 'REFUND', 'TAX_CREDIT_CERTIFICATE']),
 })
 
-const settlementSchema = z.object({
+export const settlementSchema = z.object({
   event: z.enum(['REFUND_RECEIVED', 'TCC_APPLIED', 'CARRY_OVER_APPLIED']),
   reference: z.string().min(1).max(120).optional(),
   tccNumber: z.string().min(1).max(60).optional(),

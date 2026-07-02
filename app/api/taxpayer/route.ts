@@ -5,8 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { initializeTaxYear } from '@/lib/tax-year'
 
 const tinRegex = /^\d{3}-\d{3}-\d{3}-\d{4}$/
+export { tinRegex }
 
-const taxpayerSchema = z.object({
+export const taxpayerSchema = z.object({
   tin: z.string().regex(tinRegex, 'TIN must be in format NNN-NNN-NNN-NNNN'),
   fullName: z.string().min(1),
   rdoCode: z.string().min(1),
